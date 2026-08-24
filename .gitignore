@@ -70,3 +70,6 @@ scripts/_i18n_langswitch.py
 scripts/_i18n_cc.py
 scripts/_i18n_resume.py
 scripts/_i18n_edit.py
+
+# 本地密钥文件（.env.example 为模板，真实 Key 不入库）
+.env

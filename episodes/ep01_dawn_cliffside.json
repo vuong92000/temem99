@@ -1,0 +1,61 @@
+{
+  "episode": "01",
+  "title": "Bình minh bên vách núi",
+  "title_en": "Dawn on the Cliffside",
+  "video_width": 768,
+  "video_height": 1152,
+  "mode": "t2v",
+  "seed": 20260810,
+  "continuity": {
+    "leads_into": "02",
+    "note": "Tập 01 kết ở cảnh Mây sang tới đầu cầu bên kia và quay đầu nhìn về nhà. Tập 02 clip 1 mở đúng bằng cảnh Mây băng cầu trở về nhà — không được đổi kết cảnh này nếu vẫn giữ tập 02."
+  },
+  "world_bible": "Establish the visual universe of the series. An is a kind elderly woman around 65 with silver hair in a low bun, dusty rose-brown rural clothing and a beige apron. May is her golden honey-colored dog wearing a pale blue scarf. Tro is a smoky gray cat with one white front paw. A tiny wooden home is built into a lush mountain cliff, with a narrow waterfall below, a narrow wooden bridge leading away from the door, misty blue mountains and a deep valley in the background. Semi-realistic cinematic storybook digital painting, cozy fantasy miniature world, warm golden sunrise, natural painterly textures, atmospheric perspective, stable character identity, vertical 9:16, no text, no logo, no watermark.",
+  "negative_prompt": "modern buildings, cars, city objects, extra people, duplicated animals, duplicated limbs, deformed hands, distorted faces, changing clothes, changing fur colors, oversized cartoon eyes, plastic 3D rendering, neon colors, horror mood, fast action, heavy camera shake, extreme zoom, spinning camera, glitch, flash, heavy motion blur, warped branches, collapsing bridge, text, subtitles, logos, watermarks, borders, social media interface",
+  "full_episode_prompt": "Open on a quiet mountain dawn. Mist fills the deep valley below a tiny wooden home built into a lush cliff, with a narrow waterfall falling beside it. Warm lamplight glows in the small window as An opens the wooden shutters and looks out at the sunrise. Tro, a smoky gray cat with one white front paw, stretches slowly on the windowsill. May, a golden honey-colored dog, waits at the doorway while An kneels and gently ties a pale blue scarf around his neck. She hands him a small empty woven basket. May takes the basket handle carefully in his mouth and steps out onto the narrow wooden bridge. End with May reaching the far side of the bridge, turning once to look back at the small glowing home across the mist. Preserve An's identity, May's golden fur and pale blue scarf, Tro's smoky gray fur and white front paw, and the same house architecture. Gentle controlled cinematic motion, warm and quiet mood, no sudden camera movement, no morphing, no extra animals, no extra limbs, no text, no logo, no watermark.",
+  "minimal_motion_prompt": "Gentle cinematic motion only: slow establishing push-in, drifting valley mist, falling narrow waterfall, wooden shutters opening, cat stretching slowly, elderly woman kneeling to tie a scarf, calm dog walking onto a wooden bridge, warm lamplight, stable architecture, consistent character identity, cozy fantasy storybook realism, vertical 9:16, no morphing, no sudden movement, no text.",
+  "clips": [
+    {
+      "n": 1,
+      "slug": "binh-minh-ben-vach-nui",
+      "title": "Bình minh bên vách núi",
+      "duration": 5,
+      "prompt": "Establishing wide shot at dawn. A tiny wooden home is built into a lush green mountain cliff, with a narrow waterfall falling beside it into a deep valley filled with slow drifting mist. Warm golden sunrise light touches the misty blue mountains in the distance. A single small window glows with warm lamplight. Use a very slow cinematic push-in toward the house. Leaves and ferns sway gently, the waterfall falls steadily. No characters visible yet. Cozy fantasy storybook realism, stable architecture, calm atmospheric depth, no sudden movement, no morphing, no text."
+    },
+    {
+      "n": 2,
+      "slug": "ba-an-mo-cua-so",
+      "title": "Bà An mở cửa sổ",
+      "duration": 5,
+      "prompt": "An, an elderly woman around 65 with silver hair in a low bun, dusty rose-brown clothing and a beige apron, gently pushes open the small wooden shutters of the cliffside home and looks out toward the sunrise. Warm lamplight from inside mixes with the cool morning light outside. Mist drifts slowly past the window and the distant waterfall remains stable. Use a slow gentle push-in toward the window. Keep An's face, hands and clothing stable. Natural restrained movement, warm quiet mood, no hand deformation, no morphing, no text."
+    },
+    {
+      "n": 3,
+      "slug": "tro-vuon-vai-ben-cua-so",
+      "title": "Tro vươn vai bên cửa sổ",
+      "duration": 5,
+      "prompt": "Tro, a smoky gray cat with one white front paw, lies on the wooden windowsill of the small mountain home and stretches slowly in the warm sunrise light. He blinks once, slowly, and settles again. Behind him the valley mist drifts and the narrow waterfall falls steadily. Use a quiet static shot with a very slight push-in. Warm rim light catches the edge of his gray fur. Keep the white front paw clearly visible and stable. Calm subtle motion, no jumping, no duplicated cat, no distorted paws, no text."
+    },
+    {
+      "n": 4,
+      "slug": "ba-an-buoc-khan-cho-may",
+      "title": "Bà An buộc khăn cho Mây",
+      "duration": 5,
+      "prompt": "An kneels in the wooden doorway of the cliffside home and gently ties a pale blue scarf around the neck of May, a golden honey-colored dog who sits patiently and waits. She pats his head once. Warm sunrise light falls across the doorway and mist drifts in the valley behind them. Use a calm medium shot at their eye level with a very subtle push-in. Keep An's hands, face and clothing stable, and keep May's golden fur and pale blue scarf stable. Warm affectionate mood, natural restrained movement, no hand deformation, no morphing, no text."
+    },
+    {
+      "n": 5,
+      "slug": "may-nhan-gio-len-duong",
+      "title": "Mây nhận giỏ lên đường",
+      "duration": 5,
+      "prompt": "An hands a small empty woven basket to May, the golden dog wearing a pale blue scarf. May carefully takes the basket handle in his mouth, turns and walks toward the narrow wooden bridge leading away from the house. An watches from the doorway with a soft smile, one hand resting on the wooden frame. Use a gentle camera pan following May toward the bridge. Warm sunrise light, drifting mist below. Keep the basket a single stable object, and keep May's fur and scarf stable. Calm purposeful motion, no running, no duplicated basket, no morphing, no text."
+    },
+    {
+      "n": 6,
+      "slug": "may-qua-cau-go",
+      "title": "Mây qua cầu gỗ",
+      "duration": 5,
+      "prompt": "May, the golden dog wearing a pale blue scarf, walks calmly across the narrow wooden bridge above the misty valley, carrying the small woven basket in his mouth. He reaches the far side and turns once to look back at the tiny glowing home across the mist. Hold on this composition as morning light warms the cliff and the narrow waterfall falls steadily below. Use a slow cinematic pull-back that keeps both May and the distant house in frame. Preserve May's identity, fur color, scarf and the same wooden bridge and house architecture. Quiet peaceful ending, no running, no sudden movement, no camera shake, no morphing, no text, no logo, no watermark."
+    }
+  ]
+}

@@ -21,6 +21,7 @@ from typing import Callable, List, Optional
 
 from core.pipelines import BasePipeline, CheckpointPause, PipelineShutdown
 from models.task import SceneTask, StepStatus
+from utils.errors import describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,9 @@ class MultiScenePipeline(BasePipeline):
         except Exception as e:
             self._state.status = StepStatus.FAILED
             self.task_manager.update_state(status=StepStatus.FAILED)
-            await self._emit("error", "failed", str(e), _PROGRESS_FAILED)
+            # 直接暴露 str(e) 会把 HTTPSConnectionPool/SSLError 堆栈原样丢给用户，
+            # 无从判断是网络被拦、Key 失效还是配额用尽；这里翻译成可执行的说明。
+            await self._emit("error", "failed", describe_error(e), _PROGRESS_FAILED)
             raise
 
     # ==================================================================

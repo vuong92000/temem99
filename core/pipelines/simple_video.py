@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from core.api.agnes_video import AgnesVideoAPI
 from core.pipelines import BasePipeline, PipelineShutdown
 from models.task import SimpleVideoTask, StepStatus
+from utils.errors import describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ class SimpleVideoPipeline(BasePipeline):
         except Exception as e:
             self._state.status = StepStatus.FAILED
             self.task_manager.update_state(status=StepStatus.FAILED)
-            await self._emit("error", "failed", str(e), _PROGRESS_FAILED)
+            await self._emit("error", "failed", describe_error(e), _PROGRESS_FAILED)
             raise
 
     # ------------------------------------------------------------------

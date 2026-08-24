@@ -15,6 +15,7 @@ from core.api.error_collector import collect_error, collect_error_from_exception
 from core.api.key_manager import get_key_ring
 from core.api.rate_limiter import get_rate_limiter, get_video_submit_limiter
 from core.config import get_agnes_base_url, get_agnes_api_root
+from utils.errors import describe_error
 from utils.image_normalizer import normalize_reference_path
 from utils.video import download_video
 
@@ -33,28 +34,8 @@ _UPLOAD_RETRY_BASE_DELAY_SECONDS = 30
 
 
 def _describe_poll_error(exc: Exception) -> str:
-    """把底层网络异常翻译成用户能据此行动的短语。
-
-    轮询失败时前端原本只显示一长串 HTTPSConnectionPool/SSLError 堆栈，
-    用户无从判断是自己网络不通、Key 失效还是配额用尽。
-    """
-    text = str(exc)
-    if isinstance(exc, requests.exceptions.SSLError) or "SSL" in text:
-        return "无法建立 HTTPS 连接，可能被网络/防火墙拦截，或需切换 .com / .cn 域名"
-    if isinstance(exc, requests.exceptions.ConnectTimeout) or isinstance(exc, asyncio.TimeoutError):
-        return "连接超时，网络缓慢或不可达"
-    if isinstance(exc, requests.exceptions.ConnectionError):
-        return "无法连接服务器，请检查网络或切换域名"
-    if isinstance(exc, requests.exceptions.HTTPError):
-        resp = getattr(exc, "response", None)
-        code = getattr(resp, "status_code", None)
-        if code in (401, 403):
-            return "API Key 被拒绝，请检查 Key 是否正确"
-        if code == 429:
-            return "触发限流或配额用尽，请稍后重试或增配 Key"
-        if code is not None:
-            return f"服务端返回 HTTP {code}"
-    return type(exc).__name__
+    """轮询错误的可读描述（统一实现见 utils.errors.describe_error）。"""
+    return describe_error(exc)
 
 
 class VideoOutput:

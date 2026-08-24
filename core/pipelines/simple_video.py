@@ -46,6 +46,42 @@ class SimpleVideoPipeline(BasePipeline):
         self.video_api = AgnesVideoAPI(api_key=api_key, model=video_model)
         self.video_api.shutdown_event = shutdown_event
 
+    def _make_wait_progress_callback(self):
+        """构建轮询期进度回调，把服务端渲染进度映射到 30%~90% 区间。
+
+        此前 wait_for_video() 未传 progress_callback，导致提交后到下载前
+        （_PROGRESS_WAIT=0.3 → _PROGRESS_DONE=0.9）整段时间前端读到的进度
+        恒为 30%、消息一成不变。网络异常时底层会静默重试 10 次 × 60s，
+        用户看到的就是「卡在 30% 不动」长达 10 分钟且毫无提示。
+
+        回调由 _poll_task 在工作线程中同步调用，因此用
+        run_coroutine_threadsafe 投递回事件循环，避免跨线程写 state。
+        """
+        loop = asyncio.get_running_loop()
+        span = _PROGRESS_DONE - _PROGRESS_WAIT
+
+        last = {"progress": _PROGRESS_WAIT}
+
+        def _cb(status: str, progress, _curl: str = "") -> None:
+            # progress=None 表示这是一条重试/异常通知，保持进度条不倒退，
+            # 只更新消息，让用户看到「还活着、正在重试」。
+            if progress is None:
+                msg, mapped = status, last["progress"]
+            else:
+                try:
+                    pct = float(progress)
+                except (TypeError, ValueError):
+                    pct = 0.0
+                pct = max(0.0, min(100.0, pct))
+                mapped = _PROGRESS_WAIT + span * (pct / 100.0)
+                last["progress"] = mapped
+                msg = f"服务端渲染中 {pct:.0f}%（状态 {status or 'processing'}）"
+            asyncio.run_coroutine_threadsafe(
+                self._emit("video_gen", "running", msg, mapped), loop
+            )
+
+        return _cb
+
     async def run(self, state: SimpleVideoTask) -> str:
         """执行简单视频生成流水线。"""
         self._state = state
@@ -101,7 +137,9 @@ class SimpleVideoPipeline(BasePipeline):
             self._state.video_id = saved_video_id
             self.task_manager.update_state(video_id=saved_video_id)
             await self._emit("video_gen", "running", f"恢复轮询视频任务 {saved_video_id[:16]}...", _PROGRESS_WAIT)
-            video_output = await self.video_api.wait_for_video(saved_video_id)
+            video_output = await self.video_api.wait_for_video(
+                saved_video_id, progress_callback=self._make_wait_progress_callback()
+            )
             video_output.save(video_path)
             return video_path
 
@@ -110,7 +148,9 @@ class SimpleVideoPipeline(BasePipeline):
             logger.info(f"[Simple] Resuming from state video_id: {self._state.video_id}")
             self._save_task_json(self.working_dir, {"video_id": self._state.video_id})
             await self._emit("video_gen", "running", f"恢复轮询视频任务 {self._state.video_id[:16]}...", _PROGRESS_WAIT)
-            video_output = await self.video_api.wait_for_video(self._state.video_id)
+            video_output = await self.video_api.wait_for_video(
+                self._state.video_id, progress_callback=self._make_wait_progress_callback()
+            )
             video_output.save(video_path)
             return video_path
 
@@ -144,7 +184,9 @@ class SimpleVideoPipeline(BasePipeline):
 
         await self._emit("video_gen", "running", f"等待视频生成 {video_id[:16]}...", _PROGRESS_WAIT)
 
-        video_output = await self.video_api.wait_for_video(video_id)
+        video_output = await self.video_api.wait_for_video(
+            video_id, progress_callback=self._make_wait_progress_callback()
+        )
         video_output.save(video_path)
 
         await self._emit("video_gen", "completed", "视频生成完成", _PROGRESS_DONE)

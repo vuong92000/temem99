@@ -32,6 +32,31 @@ DURATION_PRESETS = {
 _UPLOAD_RETRY_BASE_DELAY_SECONDS = 30
 
 
+def _describe_poll_error(exc: Exception) -> str:
+    """把底层网络异常翻译成用户能据此行动的短语。
+
+    轮询失败时前端原本只显示一长串 HTTPSConnectionPool/SSLError 堆栈，
+    用户无从判断是自己网络不通、Key 失效还是配额用尽。
+    """
+    text = str(exc)
+    if isinstance(exc, requests.exceptions.SSLError) or "SSL" in text:
+        return "无法建立 HTTPS 连接，可能被网络/防火墙拦截，或需切换 .com / .cn 域名"
+    if isinstance(exc, requests.exceptions.ConnectTimeout) or isinstance(exc, asyncio.TimeoutError):
+        return "连接超时，网络缓慢或不可达"
+    if isinstance(exc, requests.exceptions.ConnectionError):
+        return "无法连接服务器，请检查网络或切换域名"
+    if isinstance(exc, requests.exceptions.HTTPError):
+        resp = getattr(exc, "response", None)
+        code = getattr(resp, "status_code", None)
+        if code in (401, 403):
+            return "API Key 被拒绝，请检查 Key 是否正确"
+        if code == 429:
+            return "触发限流或配额用尽，请稍后重试或增配 Key"
+        if code is not None:
+            return f"服务端返回 HTTP {code}"
+    return type(exc).__name__
+
+
 class VideoOutput:
     def __init__(self, fmt: str, ext: str, data: str):
         self.fmt = fmt
@@ -317,6 +342,18 @@ class AgnesVideoAPI:
                 logger.warning(
                     f"[AgnesVideo] Poll error ({consecutive_failures}/{max_consecutive_failures}): {e}"
                 )
+                # 把重试情况透出到前端：否则网络不通时界面会静默停在 30%
+                # 长达 max_consecutive_failures × interval 秒（默认 10 分钟）。
+                if progress_callback:
+                    try:
+                        progress_callback(
+                            f"网络异常，重试中 {consecutive_failures}/{max_consecutive_failures}"
+                            f"（{_describe_poll_error(e)}）",
+                            None,
+                            curl_cmd,
+                        )
+                    except Exception:  # 回调失败绝不能影响重试逻辑
+                        logger.debug("[AgnesVideo] progress_callback raised on poll error")
                 # 每次轮询失败都记录
                 collect_error_from_exception(
                     "video", "poll_task",
@@ -326,8 +363,9 @@ class AgnesVideoAPI:
                 )
                 if consecutive_failures >= max_consecutive_failures:
                     error_msg = (
-                        f"[AgnesVideo] Polling failed after {max_consecutive_failures} "
-                        f"consecutive errors for video {video_id[:16]}"
+                        f"轮询视频失败：连续 {max_consecutive_failures} 次无法访问 "
+                        f"{get_agnes_api_root()}。原因：{_describe_poll_error(e)}。"
+                        f"排查方法：运行 python3 scripts/chan_doan_mang.py"
                     )
                     collect_error_from_exception(
                         "video", "poll_task",

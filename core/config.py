@@ -1,0 +1,780 @@
+"""
+core/config.py — Agnes Video Generator v2.0 配置模块
+
+包含 API Key 管理、工作目录、音频/字幕默认配置工厂函数。
+"""
+
+import json
+import logging
+import os
+
+from models.task import AudioConfig, SubtitleConfig, SubtitleStyle
+
+logger = logging.getLogger(__name__)
+
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".agnes_config")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+
+# 未配置 API Key 时的统一报错文案（含免费获取与在线体验兜底，全站路由共用）
+API_KEY_MISSING_MSG = (
+    "请先配置 API Key。免费获取：https://platform.agnes-ai.com ｜ "
+    "不想配置？在线体验：https://video.lichuanyang.top/demo"
+)
+
+# 项目根目录
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def font_dir() -> str:
+    """返回项目内置字体目录。"""
+    return os.path.join(_PROJECT_ROOT, "resource", "fonts")
+
+
+# 默认中文字体文件名（需位于 resource/fonts/ 下）
+DEFAULT_CHINESE_FONT = "STHeitiMedium.ttc"
+
+# 不支持 CJK 字符的常见字体名（用于向后兼容旧任务）
+# 这些字体在 moviepy/pillow TextClip 中无法正确渲染中文，
+# 检测到后自动回退到 DEFAULT_CHINESE_FONT。
+_NON_CJK_FONTS = frozenset({
+    "arial", "arial bold", "arial italic", "arial black",
+    "helvetica", "times", "times new roman", "courier",
+    "courier new", "verdana", "tahoma", "georgia", "trebuchet ms",
+    "impact", "comic sans ms", "lucida console",
+})
+
+
+def resolve_font_path(font: str) -> str:
+    """将字体名称解析为 moviepy TextClip 可用的路径。
+
+    优先级：
+    1. 绝对路径且文件存在 → 直接返回
+    2. 文件名（含扩展名）→ 在 resource/fonts/ 目录下查找
+    3. 已知的非 CJK 字体名 → 回退到 DEFAULT_CHINESE_FONT（兼容旧任务）
+    4. 其他系统字体名 → 直接返回
+    """
+    # 已经是绝对路径，直接返回
+    if os.path.isabs(font) and os.path.exists(font):
+        return font
+
+    # 看起来像文件名（含扩展名），尝试在项目字体目录查找
+    if "." in font and "/" not in font and "\\" not in font:
+        candidate = os.path.join(font_dir(), font)
+        if os.path.exists(candidate):
+            return candidate
+
+    # 检查是否为已知的非 CJK 字体（向后兼容：旧任务的 font 可能仍为 "Arial"）
+    if font.strip().lower() in _NON_CJK_FONTS:
+        fallback = os.path.join(font_dir(), DEFAULT_CHINESE_FONT)
+        if os.path.exists(fallback):
+            logger.warning(
+                f"Font '{font}' does not support CJK characters, "
+                f"falling back to {DEFAULT_CHINESE_FONT}"
+            )
+            return fallback
+
+    # 当作系统字体名称返回
+    return font
+
+
+# ═══════════════════════════════════════════════════
+# 类型化配置模型（v5.0 Batch 5 / 5.2）
+# ═══════════════════════════════════════════════════
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class WorkspaceEntry(BaseModel):
+    """工作目录条目。"""
+
+    model_config = ConfigDict(strict=True)
+
+    path: str
+    name: str = ""
+    is_default: bool = False
+
+
+class WatermarkSettings(BaseModel):
+    """水印配置。"""
+
+    model_config = ConfigDict(strict=True)
+
+    enabled: bool = False
+    language: str = "auto"
+
+
+class AppSettings(BaseModel):
+    """config.json 的类型化视图（Pydantic 构造期强制类型校验）。
+
+    字段与 config.json 顶层键一一对应；未知/多余键自动忽略（向后兼容
+    旧配置文件）；缺省字段取模型默认值。strict 模式下任何类型错误
+    （如 watermark.enabled 存了字符串、api_key 存了数字）在构造期抛
+    ValidationError，不静默强转。
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    api_key: str = ""
+    active_workspace: str = ""
+    workspaces: list[WorkspaceEntry] = Field(default_factory=list)
+    watermark: WatermarkSettings = Field(default_factory=WatermarkSettings)
+    models: dict[str, str] = Field(default_factory=dict)
+    agnes_domain: str = "com"
+
+
+def load_settings() -> AppSettings:
+    """读取 config.json 并返回类型化 AppSettings（构造期校验）。
+
+    文件不存在 / 为空时返回全默认设置；损坏 JSON 或类型错误抛
+    ValidationError（由调用方决定兜底策略，不静默降级）。
+    """
+    _ensure_config_dir()
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        return AppSettings(**raw)
+    return AppSettings()
+
+
+# ═══════════════════════════════════════════════════
+# API Key 管理（保持现有逻辑）
+# ═══════════════════════════════════════════════════
+
+# .env 支持（可选依赖 python-dotenv）：不存在时跳过，Key 仍可从环境变量 / 配置文件获取
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _dotenv_path = os.path.join(_PROJECT_ROOT, ".env")
+    if os.path.exists(_dotenv_path):
+        _load_dotenv(_dotenv_path)
+    _HAS_DOTENV = True
+except ImportError:
+    _HAS_DOTENV = False
+
+
+def _dotenv_value(var: str) -> str:
+    """从 .env 文件读取变量值（需已引入 python-dotenv；否则返回空串）。
+
+    注意：dotenv 只做一次性注入到 os.environ，此处仅用于区分「Key 来自 .env」
+    的场景（env 采集的 fallback 优先级高于 config 文件）。未引入 dotenv 时
+    恒返回空串，行为与现状一致。
+    """
+    if not _HAS_DOTENV:
+        return ""
+    # load_dotenv(override=False) 语义：.env 值不会覆盖已有环境变量。
+    # 这里仅读取 .env 中的原始值（不覆盖 os.environ）。
+    try:
+        from dotenv import dotenv_values
+        vals = dotenv_values(_dotenv_path)
+        return str(vals.get(var, "") or "")
+    except Exception:
+        return ""
+
+
+def _dedup(keys: list) -> list:
+    """去重、去空，保持顺序。"""
+    seen = set()
+    out = []
+    for k in keys:
+        if k and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
+def _collect_env_keys() -> list:
+    """采集 .env（低优先）+ 环境变量（高优先，同槽位覆盖）的 Key 列表。
+
+    Returns:
+        按 AGNES_API_KEY, AGNES_API_KEY_2 ... 顺序排列的原始 Key 列表（未去重）。
+    """
+    keys: list = []
+    for i in range(1, 100):
+        var = "AGNES_API_KEY" if i == 1 else f"AGNES_API_KEY_{i}"
+        dot_val = _dotenv_value(var).strip()
+        env_val = os.environ.get(var, "").strip()
+        val = env_val or dot_val  # 环境变量覆盖 .env
+        if val:
+            keys.append(val)
+        elif i > 1:
+            break
+    return keys
+
+
+def get_api_keys() -> list:
+    """返回所有可用 API Key（去重、去空），合并顺序：
+
+    1. 环境变量 / .env：AGNES_API_KEY, AGNES_API_KEY_2 ... _N（环境变量覆盖 .env）
+    2. 配置文件：api_keys 列表（新字段）或旧 api_key 单个字段（向后兼容）
+
+    两来源合并后去重（同 Key 只保留一次，env 位置优先）。因此：
+    - Web UI 保存的多 Key（config）与 env Key 可并存；
+    - 与 env 重复的 Key 自动去重，不产生双份调用。
+    """
+    env_keys = _collect_env_keys()
+    config = load_config()
+    cfg_keys = config.get("api_keys", []) or []
+    if not cfg_keys and config.get("api_key"):
+        cfg_keys = [config["api_key"]]
+    cfg_keys = [k for k in cfg_keys if k]
+    return _dedup(env_keys + cfg_keys)
+
+
+def set_api_keys(keys: list) -> None:
+    """持久化多 Key 到配置文件 ``api_keys`` 字段（原子写 + 0o600 权限）。
+
+    keys 为空数组时：移除配置中的 api_keys 字段，使采集回退到 env（.env/环境变量）。
+
+    写入后必须在调用侧重建 KeyRing 与限速器（reset_key_ring / reset_rate_limiter），
+    否则旧配置（单桶 + 旧 KeyRing）继续生效。
+    """
+    config = load_config()
+    cleaned = _dedup([k for k in keys])
+    if cleaned:
+        config["api_keys"] = cleaned
+        config.pop("api_key", None)
+    else:
+        config.pop("api_keys", None)
+    save_config(config)
+
+
+def _collect_config_keys() -> list:
+    """采集配置文件中的 Key（api_keys 列表或旧 api_key 字段），去重、去空。"""
+    config = load_config()
+    cfg_keys = config.get("api_keys", []) or []
+    if not cfg_keys and config.get("api_key"):
+        cfg_keys = [config["api_key"]]
+    return _dedup([k for k in cfg_keys if k])
+
+
+def get_api_keys_with_sources() -> list:
+    """返回去重后的 Key 列表（env 优先），每个条目含来源标记。
+
+    Returns:
+        [{"key": "sk-...", "source": "env"|"config"}, ...]
+        同 Key 在 env 与 config 中重复时只保留一次，标记为 env。
+    """
+    env_keys = _dedup(_collect_env_keys())
+    cfg_keys = _collect_config_keys()
+    seen = set()
+    out = []
+    for k in env_keys:
+        if k and k not in seen:
+            seen.add(k)
+            out.append({"key": k, "source": "env"})
+    for k in cfg_keys:
+        if k and k not in seen:
+            seen.add(k)
+            out.append({"key": k, "source": "config"})
+    return out
+
+
+def remove_api_key_single(key: str) -> tuple:
+    """从配置文件移除单个 Key（不影响 env 来源）。
+
+    Args:
+        key: 要移除的 Key 明文。
+
+    Returns:
+        (changed, still_active): changed=是否移除了 config 副本；
+        still_active=该 Key 是否仍生效（env 中存在同 Key 时仍生效）。
+    """
+    config = load_config()
+    changed = False
+    # 1. 从 api_keys 列表移除
+    cfg_keys = config.get("api_keys", []) or []
+    if key in cfg_keys:
+        cfg_keys = [k for k in cfg_keys if k != key]
+        changed = True
+    # 2. 命中旧 api_key 字段
+    if config.get("api_key") == key:
+        config.pop("api_key", None)
+        changed = True
+    if changed:
+        if cfg_keys:
+            config["api_keys"] = cfg_keys
+        else:
+            config.pop("api_keys", None)
+        save_config(config)
+    still_active = key in _dedup(_collect_env_keys())
+    return changed, still_active
+
+
+def get_api_keys_source() -> str:
+    """返回多 Key 采集来源描述，供 ``GET /api/config/keys`` 与日志展示。
+
+    Returns:
+        'env:N' / 'config:N' / 'mixed:envX+configY' / 'none'
+        （各来源计数均为各自去重后的数量；合并去重后的总数见 get_api_keys()）
+    """
+    keys = get_api_keys()
+    if not keys:
+        return "none"
+
+    env_keys = _dedup(_collect_env_keys())
+    cfg_keys = _collect_config_keys()
+
+    if env_keys and cfg_keys:
+        return f"mixed:env{len(env_keys)}+config{len(cfg_keys)}"
+    if env_keys:
+        return f"env:{len(env_keys)}"
+    if cfg_keys:
+        return f"config:{len(cfg_keys)}"
+    return "none"
+
+
+def _ensure_config_dir():
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    # 目录权限收紧为仅属主可读写执行，避免其他用户读取其中的 api_key
+    try:
+        os.chmod(CONFIG_DIR, 0o700)
+    except OSError:
+        pass
+
+
+def load_config() -> dict:
+    _ensure_config_dir()
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_config(config: dict):
+    _ensure_config_dir()
+    # 原子写：先写临时文件再 os.replace，避免写入中途崩溃留下损坏 JSON
+    tmp_path = CONFIG_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+    # 配置含 api_key，权限收紧为仅属主可读写
+    try:
+        os.chmod(tmp_path, 0o600)
+    except OSError:
+        pass
+    os.replace(tmp_path, CONFIG_FILE)
+
+
+def get_api_key() -> str:
+    """返回首个可用 Key（兼容入口）。
+
+    统一走 ``get_api_keys()``（env + config 合并去重），因此：
+    - 只配过 1 个 key（env 或 config api_key）时返回该 key；
+    - 用户新增 key 后（config api_keys 列表）自动返回第一个 key，
+      无需改动任何调用方，即自然进入多 Key 逻辑。
+    """
+    keys = get_api_keys()
+    return keys[0] if keys else ""
+
+
+def set_api_key(key: str):
+    """保存单个 Key（兼容旧端点 POST /api/config）。
+
+    与 ``set_api_keys`` 互斥：写入 api_key 字段并清掉 api_keys，
+    避免两套字段并存造成 `api_keys` 优先级混乱。
+    注意：env Key 始终参与 ``get_api_keys()`` 合并，不受影响。
+    """
+    config = load_config()
+    config["api_key"] = key
+    config.pop("api_keys", None)
+    save_config(config)
+
+
+def delete_api_key() -> bool:
+    """Remove the API key from the config file（单 Key 与多 Key 字段一并清理）。
+
+    Returns:
+        True if a key was removed, False if no key existed.
+
+    Note:
+        This does NOT affect the AGNES_API_KEY environment variable.
+        If the env var is set, get_api_key() will still return it.
+    """
+    config = load_config()
+    removed = False
+    if "api_key" in config:
+        del config["api_key"]
+        removed = True
+    if "api_keys" in config:
+        del config["api_keys"]
+        removed = True
+    if removed:
+        save_config(config)
+    return removed
+
+
+def get_api_key_source() -> str:
+    """Return the source of the current API key.
+
+    Returns:
+        'env' if from AGNES_API_KEY environment variable,
+        'config' if from the config file（api_key 或 api_keys 字段）,
+        'none' if no key is configured.
+    """
+    if get_api_keys():
+        if _collect_env_keys():
+            return "env"
+        return "config"
+    return "none"
+
+
+# ═══════════════════════════════════════════════════
+# 工作目录管理（多工作目录，同时仅一个 active）
+# ═══════════════════════════════════════════════════
+
+# 回归测试专用工作目录环境变量名
+REGRESSION_WORKING_DIR_ENV = "AGNES_REGRESSION_WORKING_DIR"
+
+# 默认工作目录的固定名称标识
+DEFAULT_WORKSPACE_NAME = "默认空间"
+
+
+def _default_working_dir() -> str:
+    """默认工作目录（项目根目录下的 .working_dir）。"""
+    return os.path.join(_PROJECT_ROOT, ".working_dir")
+
+
+def _default_workspace_entry() -> dict:
+    """返回默认工作目录条目。"""
+    return {"path": _default_working_dir(), "name": DEFAULT_WORKSPACE_NAME, "is_default": True}
+
+
+def get_working_dir() -> str:
+    """返回当前激活的工作目录。
+
+    优先级：
+    1. 环境变量 AGNES_REGRESSION_WORKING_DIR（回归测试专用空间，最高优先级）
+    2. 配置文件中的 active_workspace
+    3. 默认 .working_dir
+    """
+    env_dir = os.environ.get(REGRESSION_WORKING_DIR_ENV, "")
+    if env_dir:
+        return env_dir
+    active = load_settings().active_workspace
+    if active:
+        return active
+    return _default_working_dir()
+
+
+def get_workspace_root() -> str:
+    """返回工作目录允许根的受信任路径（safe_workspace_path 的 containment 基准）。
+
+    工作目录功能允许操作员通过操作系统原生目录选择框挑选本机上的**任意**目录，
+    因此默认根设为文件系统根 ``/``（受信任常量，绝不被 CodeQL 判定为受污染）。
+    这样 safe_workspace_path 在保留“任意目录可用”特性的同时，仍通过
+    realpath 规范化 + 受信任根 containment 检查，使 py/path-injection 告警被中和。
+    """
+    return "/"
+
+
+def get_workspaces() -> list:
+    """返回所有已配置的工作目录列表（含默认空间，始终排在首位）。
+
+    Returns:
+        [{"path": "...", "name": "...", "is_default": bool}, ...]
+    """
+    settings = load_settings()
+    user_workspaces = [ws.model_dump() for ws in settings.workspaces]
+    default_path = _default_working_dir()
+    filtered = [ws for ws in user_workspaces if os.path.abspath(ws.get("path", "")) != default_path]
+    return [_default_workspace_entry()] + filtered
+
+
+def add_workspace(path: str, name: str = "") -> dict:
+    """添加一个工作目录。若路径已存在则更新名称。
+
+    Returns:
+        添加后的工作目录条目
+    """
+    path = os.path.abspath(path)
+    config = load_config()
+    workspaces = config.get("workspaces", [])
+    for ws in workspaces:
+        if os.path.abspath(ws.get("path", "")) == path:
+            if name:
+                ws["name"] = name
+            save_config(config)
+            return ws
+    entry = {"path": path, "name": name or os.path.basename(path) or path}
+    workspaces.append(entry)
+    config["workspaces"] = workspaces
+    if not config.get("active_workspace"):
+        config["active_workspace"] = path
+    save_config(config)
+    return entry
+
+
+def remove_workspace(path: str) -> bool:
+    """移除一个工作目录。默认空间不可移除。
+
+    若移除的是当前激活项，则激活默认空间。
+
+    Returns:
+        True if removed, False if not found or is default
+    """
+    path = os.path.abspath(path)
+    if path == _default_working_dir():
+        return False
+    config = load_config()
+    workspaces = config.get("workspaces", [])
+    new_list = [ws for ws in workspaces if os.path.abspath(ws.get("path", "")) != path]
+    if len(new_list) == len(workspaces):
+        return False
+    config["workspaces"] = new_list
+    if os.path.abspath(config.get("active_workspace", "")) == path:
+        config.pop("active_workspace", None)
+    save_config(config)
+    return True
+
+
+def get_active_workspace() -> str:
+    """返回当前激活的工作目录路径。"""
+    return get_working_dir()
+
+
+def set_active_workspace(path: str) -> str:
+    """设置当前激活的工作目录。路径必须已在列表中（含默认空间）。
+
+    Returns:
+        激活的工作目录路径
+
+    Raises:
+        ValueError: 路径不在已配置列表中
+    """
+    path = os.path.abspath(path)
+    valid_paths = [os.path.abspath(ws.get("path", "")) for ws in get_workspaces()]
+    if path not in valid_paths:
+        raise ValueError(f"工作目录未配置: {path}")
+    config = load_config()
+    if path == _default_working_dir():
+        config.pop("active_workspace", None)
+    else:
+        config["active_workspace"] = path
+    save_config(config)
+    return path
+
+
+# ═══════════════════════════════════════════════════
+# v2.0 新增：音频 / 字幕默认配置
+# ═══════════════════════════════════════════════════
+
+# D3：默认语音角色
+DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
+
+# D3：可选语音角色列表（v4.0 起改为运行时从 edge_tts 动态加载，见 core.audio.voices）。
+# 保留 AVAILABLE_VOICES 作为向后兼容的别名（返回扁平列表），新代码请使用 get_voice_catalog()。
+from core.audio.voices import (
+    get_voice_catalog,
+    get_voice_by_id,
+    get_voice_lang,
+    is_voice_compatible,
+    is_voice_compatible_with_text,
+    load_voice_catalog,
+    VOICE_PREVIEW_TEXTS,
+    LANG_COMPAT,
+    PROJECT_LANGUAGES,
+)
+
+def AVAILABLE_VOICES() -> list:
+    """向后兼容：返回扁平化的 [{id, label}, ...] 列表。
+
+    原接口签名是模块级列表，升级为函数以保证与旧调用方兼容。
+    """
+    cat = get_voice_catalog()
+    result = []
+    for group in cat.get("languages", []):
+        for v in group.get("voices", []):
+            result.append({"id": v["id"], "label": f"{v['name']}（{v['region']}）"})
+    return result
+
+
+def get_default_subtitle_style() -> SubtitleStyle:
+    """返回默认字幕样式配置（D4）。"""
+    return SubtitleStyle(
+        font=DEFAULT_CHINESE_FONT,
+        color="white",
+        position=("center", "bottom-80"),
+        fontsize=48,
+        stroke_color="black",
+        stroke_width=2,
+        bg_color=(0, 0, 0, 128),
+    )
+
+
+def get_default_subtitle_config() -> SubtitleConfig:
+    """返回默认字幕配置（v3.0 独立配置）。"""
+    return SubtitleConfig(
+        enabled=True,
+        style=get_default_subtitle_style(),
+    )
+
+
+def get_default_audio_config() -> AudioConfig:
+    """返回默认音频配置（D3）。"""
+    return AudioConfig(
+        enabled=True,
+        voice=DEFAULT_VOICE,
+        rate="+0%",
+    )
+
+
+# ═══════════════════════════════════════════════════
+# 水印配置
+# ═══════════════════════════════════════════════════
+
+DEFAULT_WATERMARK_ENABLED = False
+DEFAULT_WATERMARK_LANGUAGE = "auto"  # "auto" | "zh" | "en"
+
+WATERMARK_PROMO_TEXT_ZH = "为视频添加 Agnes Video Generator 水印，分享时让更多人发现这个工具"
+WATERMARK_PROMO_TEXT_EN = "Add an Agnes Video Generator watermark to help more creators discover this tool"
+
+
+def get_watermark_config() -> dict:
+    """返回水印配置。
+
+    Returns:
+        {"enabled": bool, "language": str}
+    """
+    settings = load_settings()
+    wm = settings.watermark
+    return {
+        "enabled": wm.enabled if wm.enabled is not None else DEFAULT_WATERMARK_ENABLED,
+        "language": wm.language or DEFAULT_WATERMARK_LANGUAGE,
+    }
+
+
+def set_watermark_config(enabled: bool = None, language: str = None):
+    """设置水印配置。
+
+    Args:
+        enabled: 是否开启水印，None 表示不修改
+        language: 水印语言，None 表示不修改
+    """
+    config = load_config()
+    wm = config.get("watermark", {})
+    if enabled is not None:
+        wm["enabled"] = enabled
+    if language is not None:
+        wm["language"] = language
+    config["watermark"] = wm
+    save_config(config)
+
+
+# ═══════════════════════════════════════════════════
+# 视频参数预设（D7）
+# ═══════════════════════════════════════════════════
+
+VIDEO_RESOLUTION_PRESETS = {
+    "portrait": {"width": 768, "height": 1152, "label": "竖屏 9:16"},
+    "landscape": {"width": 1152, "height": 768, "label": "横屏 16:9"},
+    "square": {"width": 1024, "height": 1024, "label": "方形 1:1"},
+}
+
+# 时长 → (num_frames, frame_rate) 映射
+DURATION_FRAME_MAP = {
+    5: (121, 24),
+    10: (241, 24),
+    15: (361, 24),
+    18: (441, 24),
+    20: (441, 22),
+}
+
+
+# ═══════════════════════════════════════════════════
+# 模型选择配置（v5.0 新增：文本 / 图像 / 视频模型）
+# ═══════════════════════════════════════════════════
+
+# 各类型 Agnes 模型默认值（与三个 API 客户端的默认 model 对齐）
+DEFAULT_TEXT_MODEL = "agnes-2.0-flash"
+DEFAULT_IMAGE_MODEL = "agnes-image-2.1-flash"
+DEFAULT_VIDEO_MODEL = "agnes-video-v2.0"
+
+DEFAULT_MODELS = {
+    "text": DEFAULT_TEXT_MODEL,
+    "image": DEFAULT_IMAGE_MODEL,
+    "video": DEFAULT_VIDEO_MODEL,
+}
+
+
+def get_selected_models() -> dict:
+    """返回当前选中的模型配置。
+
+    Returns:
+        {"text": str, "image": str, "video": str}
+        缺省值回退到 Agnes 三个 API 客户端的默认模型。
+    """
+    settings = load_settings()
+    m = settings.models or {}
+    return {
+        "text": m.get("text") or DEFAULT_TEXT_MODEL,
+        "image": m.get("image") or DEFAULT_IMAGE_MODEL,
+        "video": m.get("video") or DEFAULT_VIDEO_MODEL,
+    }
+
+
+def set_selected_models(text: str = None, image: str = None, video: str = None) -> dict:
+    """保存选中的模型配置。
+
+    Args:
+        text:  文本（chat）模型名，None 表示不修改
+        image: 图像模型名，None 表示不修改
+        video: 视频模型名，None 表示不修改
+
+    Returns:
+        保存后的完整模型配置字典
+    """
+    config = load_config()
+    m = config.get("models", {}) or {}
+    if text is not None:
+        m["text"] = text
+    if image is not None:
+        m["image"] = image
+    if video is not None:
+        m["video"] = video
+    config["models"] = m
+    save_config(config)
+    return get_selected_models()
+
+
+# ═══════════════════════════════════════════════════
+# Agnes API 域名配置（v6.0）
+# ═══════════════════════════════════════════════════
+
+# 可用域名映射
+AGNES_DOMAIN_MAP = {
+    "com": "https://apihub.agnes-ai.com",
+    "cn": "https://apihub.agnes-ai.cn",
+}
+
+_DEFAULT_DOMAIN = "com"
+
+
+def get_agnes_domain() -> str:
+    """返回当前配置的域名后缀。
+
+    Returns:
+        "com" 或 "cn"
+    """
+    return load_settings().agnes_domain or _DEFAULT_DOMAIN
+
+
+def set_agnes_domain(domain: str):
+    """设置 Agnes API 域名后缀。
+
+    Args:
+        domain: "com" 或 "cn"
+    """
+    config = load_config()
+    config["agnes_domain"] = domain
+    save_config(config)
+
+
+def get_agnes_base_url() -> str:
+    """返回基于当前域名配置的完整 API Base URL（含 /v1 后缀）。"""
+    domain = get_agnes_domain()
+    root = AGNES_DOMAIN_MAP.get(domain, AGNES_DOMAIN_MAP[_DEFAULT_DOMAIN])
+    return f"{root}/v1"
+
+
+def get_agnes_api_root() -> str:
+    """返回基于当前域名配置的 API Root URL（不含 /v1 后缀）。"""
+    domain = get_agnes_domain()
+    return AGNES_DOMAIN_MAP.get(domain, AGNES_DOMAIN_MAP[_DEFAULT_DOMAIN])

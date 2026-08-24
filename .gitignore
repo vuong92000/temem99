@@ -1,0 +1,72 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.working_dir/
+.workbuddy/
+.agnes_config/
+.writing/
+
+# 媒体产物（限定在工作目录下，保留根目录测试素材）
+.working_dir/**/*.mp4
+.working_dir/**/*.png
+.working_dir/**/*.jpg
+.working_dir/**/*.jpeg
+
+# 回归测试服务日志
+.regression_server.log
+
+.DS_Store
+*.egg-info/
+dist/
+build/
+static/generated/
+
+# 前端依赖与本地构建缓存（构建产物 static/assets/ 需提交进仓库）
+frontend/node_modules/
+frontend/.vite/
+
+# IDE 本地数据
+.codebuddy/
+
+# 模型接口报错收集
+error_logs/
+
+# 单元测试覆盖度产物（不提交，CI 另生成）
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Mock 回归测试生成的报告与临时数据（预制素材 assets/ fixture_data/ 需保留）
+tests/mock_regression/reports/
+tests/mock_regression/**/.working_dir/
+
+# 本地 Docker 持久化数据（宿主机挂载目录）
+agnes_data/
+
+# moviepy 临时产物（运行期泄漏到仓库根目录）
+final_video*TEMP*.mp4
+*TEMP*_wvf_snd.mp4
+
+# 覆盖率分析产物
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+coverage.json
+scripts/_verify_resume_skip.py
+
+scripts/_i18n_fill.py
+scripts/_i18n_fill2.py
+scripts/_i18n_fill_all.py
+
+# 回归测试运行期产物（报告与专用工作目录，不入库）
+.regression_workspace/
+docs/dev/regression_report.json
+docs/dev/regression_report.md
+docs/dev/regression_issues.md
+scripts/_i18n_langswitch.py
+scripts/_i18n_cc.py
+scripts/_i18n_resume.py
+scripts/_i18n_edit.py

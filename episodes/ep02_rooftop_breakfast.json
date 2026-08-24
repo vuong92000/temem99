@@ -1,0 +1,57 @@
+{
+  "episode": "02",
+  "title": "Bữa sáng trên mái nhà",
+  "title_en": "Rooftop Breakfast",
+  "video_width": 768,
+  "video_height": 1152,
+  "mode": "t2v",
+  "seed": 20260824,
+  "world_bible": "Continue in the same visual universe as the previous episode. An is a kind elderly woman around 65 with silver hair in a low bun, dusty rose-brown rural clothing and a beige apron. May is her golden honey-colored dog wearing a pale blue scarf. Tro is a smoky gray cat with one white front paw. The same tiny wooden home is built into a lush mountain cliff, with a narrow waterfall below, misty blue mountains and a deep valley in the background. Semi-realistic cinematic storybook digital painting, cozy fantasy miniature world, warm golden sunrise, natural painterly textures, atmospheric perspective, stable character identity, vertical 9:16, no text, no logo, no watermark.",
+  "negative_prompt": "modern buildings, cars, city objects, extra people, duplicated animals, duplicated limbs, deformed hands, distorted faces, changing clothes, changing fur colors, oversized cartoon eyes, plastic 3D rendering, neon colors, horror mood, fast action, heavy camera shake, extreme zoom, spinning camera, glitch, flash, heavy motion blur, melting fruit, warped branches, text, subtitles, logos, watermarks, borders, social media interface",
+  "full_episode_prompt": "Continue naturally from the previous episode. May has just crossed the narrow wooden bridge and calmly runs toward the rooftop of the tiny cliffside home. The camera follows May at a low angle, then slowly tilts upward to reveal that the entire roof is a lush peach garden above the clouds. An steps onto the roof, gently picks one ripe peach and places it into a woven basket. May waits patiently below, wagging his tail. Tro quietly pulls a small peach from the basket and slips behind the chimney while An smiles. End with An sitting at a small rooftop breakfast table, May resting beside her and Tro peeking from behind the chimney. Peach branches and vines sway softly, tea steam rises, and mist drifts through the valley. Preserve An's identity, May's golden fur and pale blue scarf, Tro's smoky gray fur and white front paw, the same house architecture and the rooftop composition. Gentle controlled cinematic motion, subtle humor, no sudden camera movement, no morphing, no extra animals, no extra limbs, no text, no logo, no watermark.",
+  "minimal_motion_prompt": "Gentle cinematic motion only: slow camera tracking, subtle upward tilt, soft peach leaves swaying, calm dog movement, restrained elderly woman picking one peach, quiet cat stealing one peach, rising tea steam, drifting mountain mist, stable architecture, consistent character identity, cozy fantasy storybook realism, vertical 9:16, no morphing, no sudden movement, no text.",
+  "clips": [
+    {
+      "n": 1,
+      "slug": "may-chay-len-mai-nha",
+      "title": "Mây chạy lên mái nhà",
+      "duration": 5,
+      "prompt": "Continue directly from the previous episode. May, a golden honey-colored dog wearing a pale blue scarf, calmly crosses the narrow wooden bridge and walks toward the tiny wooden cliffside home. The camera tracks backward at May's eye level, then slowly tilts upward toward peach branches above the roof. Wet leaves sway gently, mist drifts below the bridge, and the distant waterfall remains stable. Preserve May's identity, fur color, scarf and the same wooden bridge. Slow peaceful cinematic motion, no running, no sudden movement, no morphing, no text."
+    },
+    {
+      "n": 2,
+      "slug": "reveal-khu-vuon-tren-mai",
+      "title": "Reveal khu vườn trên mái",
+      "duration": 5,
+      "prompt": "Slow cinematic tilt and gentle push-in over the rooftop of the same tiny mountain home. Reveal a lush rooftop garden filled with peach trees, giant green vines, herbs, moss and small terracotta lanterns above a sea of clouds. An steps out onto the roof and looks toward May. Warm golden sunrise passes softly through the leaves while mist moves slowly across the distant blue mountains. Preserve the house architecture, character identity and composition. Cozy fantasy storybook realism, stable camera motion, no new objects, no text, no logo, no watermark."
+    },
+    {
+      "n": 3,
+      "slug": "ba-an-hai-qua-dao",
+      "title": "Bà An hái quả đào",
+      "duration": 5,
+      "prompt": "An, the same elderly woman with silver hair in a low bun, dusty rose-brown clothing and a beige apron, slowly reaches toward one ripe peach on the rooftop tree. She gently twists the peach once, picks it and places it into a woven basket beside a small wooden breakfast table. May waits calmly below the tree. Use a subtle camera push-in toward the peach, with warm sunrise light through the leaves. Keep An's hands, face, clothing, peach tree and basket stable. Natural restrained movement, no hand deformation, no extra fruit appearing, no text."
+    },
+    {
+      "n": 4,
+      "slug": "may-cho-duoc-chia-phan",
+      "title": "Mây chờ được chia phần",
+      "duration": 5,
+      "prompt": "Low-angle cinematic shot at the eye level of May, the golden dog wearing a pale blue scarf. May sits patiently beneath the peach tree and looks toward the ripe peach in An's hand. He wags his tail once and tilts his head slightly. Use a gentle focus shift from the foreground peach to May's eyes. Leaves move softly in the breeze, warm light creates a small catchlight in his eyes, and the rooftop garden remains stable. Subtle emotional motion, no barking, no exaggerated cartoon expression, no morphing, no text."
+    },
+    {
+      "n": 5,
+      "slug": "tro-tu-lay-phan",
+      "title": "Tro tự lấy phần",
+      "duration": 5,
+      "prompt": "Tro, the same smoky gray cat with one white front paw, quietly approaches the woven basket on the rooftop. Tro uses the white paw to pull one small peach from the basket, looks around once, then gently pushes or carries the peach behind the small chimney. May watches softly in the background while An remains turned away near the breakfast table. Use a short, gentle camera pan following Tro. Subtle playful motion, calm cozy mood, no running, no distorted paws, no duplicated cat, no text, no logo, no watermark."
+    },
+    {
+      "n": 6,
+      "slug": "bua-sang-tren-mai-nha",
+      "title": "Bữa sáng trên mái nhà",
+      "duration": 5,
+      "prompt": "Hold a peaceful three-quarter elevated composition on the rooftop garden. An sits at a small wooden breakfast table with warm tea and sliced peaches. May rests beside her, while Tro peeks from behind the chimney with a small peach. Peach branches and vines frame the scene, a narrow waterfall and misty blue mountains remain in the background. Tea steam rises and blends gently with the morning mist. Use a very slow pull-back, stable characters, soft leaf movement and calm cinematic depth. Warm golden sunrise, cozy fantasy storybook realism, no sudden movement, no morphing, no new objects, no text, no logo, no watermark."
+    }
+  ]
+}

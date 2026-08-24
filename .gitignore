@@ -73,3 +73,7 @@ scripts/_i18n_edit.py
 
 # 本地密钥文件（.env.example 为模板，真实 Key 不入库）
 .env
+
+# 生成的视频产物与分集运行状态（不入库）
+output/
+episodes/.state_ep*.json

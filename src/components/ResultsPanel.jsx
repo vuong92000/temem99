@@ -1,6 +1,5 @@
 import React from "react";
 import { Film, Clapperboard, Sparkles, Code, Copy, Download, FileJson, FileText, RefreshCw } from "lucide-react";
-import { toMarkdown, toPlainText, toPromptPack } from "../lib/generator.js";
 
 const TABS = [
   { id: "script", label: "Kịch Bản Chi Tiết", icon: Film },
@@ -271,5 +270,3 @@ export default function ResultsPanel({
     </footer>
   );
 }
-
-export { toMarkdown, toPlainText, toPromptPack };

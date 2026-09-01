@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -7,14 +7,32 @@ import PropertiesPanel from './components/PropertiesPanel.jsx'
 import BottomPanel from './components/BottomPanel.jsx'
 import Toasts from './components/Toasts.jsx'
 import { SettingsModal, TemplatesModal } from './components/Modals.jsx'
+import ClassicApp from './classic/ClassicApp.jsx'
 import { useWorkflowStore } from './store/useWorkflowStore.js'
+
+/** Hai chế độ giao diện: 'studio' (React Flow) và 'classic' (bản single-file). */
+const readMode = () => (typeof window !== 'undefined' && window.location.hash === '#classic' ? 'classic' : 'studio')
 
 export default function App() {
   const refreshStatuses = useWorkflowStore((s) => s.refreshStatuses)
+  const [mode, setMode] = useState(readMode)
 
   useEffect(() => {
     refreshStatuses()
   }, [refreshStatuses])
+
+  useEffect(() => {
+    const onHash = () => setMode(readMode())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const switchTo = (next) => {
+    window.location.hash = next === 'classic' ? '#classic' : ''
+    setMode(next)
+  }
+
+  if (mode === 'classic') return <ClassicApp onSwitch={() => switchTo('studio')} />
 
   return (
     <ReactFlowProvider>
@@ -27,7 +45,7 @@ export default function App() {
         </div>
 
         <div className="relative z-10 flex h-full flex-col">
-          <Header />
+          <Header onSwitchUI={() => switchTo('classic')} />
           <div className="flex min-h-0 flex-1">
             <Sidebar />
             <main className="relative min-w-0 flex-1">

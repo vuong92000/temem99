@@ -3,7 +3,7 @@ import { Icon, Modal, Tooltip } from './ui.jsx'
 import { useWorkflowStore } from '../store/useWorkflowStore.js'
 import { download } from '../lib/exporters.js'
 
-export default function Header() {
+export default function Header({ onSwitchUI }) {
   const fileRef = useRef(null)
   const [loadOpen, setLoadOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
@@ -108,6 +108,14 @@ export default function Header() {
           <HBtn icon="Braces" label="Export" tooltip="Export workflow JSON" onClick={exportJson} />
           <HBtn icon="RotateCcw" label="Reset" tooltip="Reset trạng thái node" onClick={() => s.getState().resetWorkflow()} />
           <HBtn icon="Settings2" label="Settings" tooltip="Cài đặt" onClick={() => s.getState().setSettingsOpen(true)} />
+          {onSwitchUI && (
+            <Tooltip label="Xem giao diện Classic (bản single-file)" side="bottom">
+              <button onClick={onSwitchUI} className="btn-soft ml-1 border-brand-500/30 bg-brand-500/10 text-brand-200">
+                <Icon name="Layers" size={15} />
+                <span className="hidden xl:inline">Classic UI</span>
+              </button>
+            </Tooltip>
+          )}
 
           <button
             onClick={() => s.getState().runAll()}

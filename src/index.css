@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --grid: rgba(255, 255, 255, 0.045);
+  --accent: #7c5cff;
+  --accent-2: #3ddbd9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: Inter, 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: #07080c;
+  color: #e6e9f0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------ scrollbars */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 255, 0.55);
+  background-clip: content-box;
+}
+
+@layer components {
+  .glass {
+    @apply bg-ink-900/80 backdrop-blur-xl border-white/[0.07];
+  }
+  .panel {
+    background: linear-gradient(180deg, rgba(20, 24, 34, 0.94) 0%, rgba(11, 13, 19, 0.96) 100%);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150 select-none whitespace-nowrap;
+  }
+  .btn-ghost {
+    @apply btn text-slate-300 hover:text-white hover:bg-white/[0.07] active:scale-[0.97];
+  }
+  .btn-soft {
+    @apply btn bg-white/[0.055] text-slate-200 border border-white/[0.07] hover:bg-white/[0.1] hover:border-white/15 active:scale-[0.97];
+  }
+  .btn-primary {
+    @apply btn text-white shadow-[0_6px_24px_-8px_rgba(124,92,255,0.9)] active:scale-[0.97];
+    background: linear-gradient(135deg, #7c5cff 0%, #6541e6 55%, #5b8cff 100%);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.1);
+  }
+  .btn-danger {
+    @apply btn bg-red-500/[0.12] text-red-300 border border-red-500/25 hover:bg-red-500/20 active:scale-[0.97];
+  }
+  .btn-success {
+    @apply btn bg-emerald-500/[0.12] text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-all;
+  }
+  .field-label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-400;
+  }
+  .input {
+    @apply w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none transition-all;
+  }
+  .input:focus {
+    @apply border-brand-500/70 bg-black/50;
+    box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.16);
+  }
+  .card {
+    @apply rounded-xl border border-white/[0.07] bg-white/[0.025];
+  }
+  .scroll-thin {
+    scrollbar-width: thin;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --------------------------------------------------------- react flow ui */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 99px;
+  border: 2px solid #0b0d13;
+  background: #5b6478;
+  transition: all 140ms ease;
+}
+.react-flow__handle:hover {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.22);
+  transform: scale(1.25);
+}
+.react-flow__handle-left {
+  left: -7px;
+}
+.react-flow__handle-right {
+  right: -7px;
+}
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 5px rgba(61, 219, 217, 0.22);
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  filter: drop-shadow(0 0 6px rgba(124, 92, 255, 0.8));
+}
+.react-flow__connection-path {
+  stroke: url(#edge-gradient-live);
+  stroke-width: 2.4;
+  stroke-dasharray: 6 5;
+  animation: dashmove 0.6s linear infinite;
+}
+@keyframes dashmove {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.flow-edge-animated {
+  stroke-dasharray: 8 6;
+  animation: dashmove 0.7s linear infinite;
+}
+
+.react-flow__node {
+  font-family: inherit;
+}
+.react-flow__node.selected .wf-node {
+  border-color: rgba(124, 92, 255, 0.75);
+  box-shadow:
+    0 0 0 1px rgba(124, 92, 255, 0.6),
+    0 0 32px -6px rgba(124, 92, 255, 0.6),
+    0 18px 40px -20px rgba(0, 0, 0, 0.9);
+}
+.react-flow__nodesselection-rect,
+.react-flow__selection {
+  background: rgba(124, 92, 255, 0.09);
+  border: 1px solid rgba(124, 92, 255, 0.55);
+  border-radius: 6px;
+}
+
+.react-flow__minimap {
+  background: rgba(8, 10, 15, 0.86) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px -24px #000;
+}
+.react-flow__minimap-mask {
+  fill: rgba(6, 7, 11, 0.66);
+}
+
+.react-flow__controls {
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------- helpers */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.035) 25%, rgba(255, 255, 255, 0.11) 37%, rgba(255, 255, 255, 0.035) 63%);
+  background-size: 400px 100%;
+}
+
+.grad-text {
+  background: linear-gradient(100deg, #fff 10%, #c9b7ff 45%, #3ddbd9 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dot-status {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+}
+
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.node-drag-ghost {
+  transform: rotate(-2deg);
+}
+
+.mono {
+  font-family: 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

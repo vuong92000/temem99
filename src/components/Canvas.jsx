@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -293,11 +293,17 @@ function CanvasToolbar() {
 /* -------------------------------------------------------------- legend */
 
 function StatusLegend() {
-  const nodes = useWorkflowStore((s) => s.nodes.filter((n) => n.type !== 'groupBox'))
-  const counts = nodes.reduce((acc, n) => {
-    acc[n.data.status] = (acc[n.data.status] || 0) + 1
-    return acc
-  }, {})
+  const allNodes = useWorkflowStore((s) => s.nodes)
+  const counts = useMemo(
+    () =>
+      allNodes
+        .filter((n) => n.type !== 'groupBox')
+        .reduce((acc, n) => {
+          acc[n.data.status] = (acc[n.data.status] || 0) + 1
+          return acc
+        }, {}),
+    [allNodes],
+  )
   return (
     <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-ink-900/85 px-3 py-2 shadow-panel backdrop-blur-xl">
       {Object.values(STATUS).map((s) => (

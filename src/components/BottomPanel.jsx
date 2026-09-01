@@ -402,7 +402,10 @@ function PromptsTab({ result }) {
 function LogsTab({ logs }) {
   const ref = useRef(null)
   useEffect(() => {
-    ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: 'smooth' })
+    const el = ref.current
+    if (!el) return
+    if (typeof el.scrollTo === 'function') el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    else el.scrollTop = el.scrollHeight
   }, [logs.length])
 
   const color = { info: 'text-slate-400', success: 'text-emerald-300', warn: 'text-amber-300', error: 'text-red-300' }

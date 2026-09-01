@@ -15,9 +15,13 @@ import {
   HelpCircle,
   X,
   ChevronRight,
+  Magnet,
+  Library,
 } from "lucide-react";
 
-import { INITIAL_NODES, INITIAL_CONNECTIONS, NODE_TEMPLATES, getTemplate } from "./data/nodeTemplates.js";
+import { NODE_TEMPLATES, getTemplate } from "./data/nodeTemplates.js";
+import { WORKFLOW_PRESETS, DEFAULT_PRESET_ID } from "./data/presets.js";
+import { loadState, saveState, clearState } from "./lib/storage.js";
 import {
   portPosition,
   validateConnection,
@@ -34,6 +38,15 @@ import Connections from "./components/Connections.jsx";
 import Inspector from "./components/Inspector.jsx";
 import ResultsPanel from "./components/ResultsPanel.jsx";
 import MiniMap from "./components/MiniMap.jsx";
+import PresetsModal from "./components/PresetsModal.jsx";
+
+const EXPORT_FORMAT_MAP = {
+  JSON: "json",
+  Markdown: "md",
+  TXT: "txt",
+  "Prompt Pack": "prompts",
+  "All-in-One": "json",
+};
 
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2;
@@ -44,10 +57,13 @@ export default function App() {
   /* ------------------------------------------------------------------ *
    * Graph state + history
    * ------------------------------------------------------------------ */
-  const [graph, setGraph] = useState(() => ({
-    nodes: clone(INITIAL_NODES),
-    connections: clone(INITIAL_CONNECTIONS),
-  }));
+  const persisted = useRef(loadState()).current;
+  const fallbackPreset =
+    WORKFLOW_PRESETS.find((p) => p.id === DEFAULT_PRESET_ID) || WORKFLOW_PRESETS[0];
+
+  const [graph, setGraph] = useState(
+    () => persisted?.graph || { nodes: clone(fallbackPreset.nodes), connections: clone(fallbackPreset.connections) }
+  );
   const graphRef = useRef(graph);
   const [past, setPast] = useState([]);
   const [future, setFuture] = useState([]);
@@ -63,10 +79,13 @@ export default function App() {
   const [hoverPort, setHoverPort] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [executionResult, setExecutionResult] = useState(null);
+  const [executionResult, setExecutionResult] = useState(() => persisted?.result || null);
   const [activeTab, setActiveTab] = useState("script");
   const [toast, setToast] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [savedAt, setSavedAt] = useState(() => persisted?.savedAt || null);
 
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -89,6 +108,24 @@ export default function App() {
   const addLog = useCallback((msg, level = "info") => {
     setLogs((prev) => [...prev, { time: new Date().toLocaleTimeString(), msg, level }]);
   }, []);
+
+  /* ------------------------------------------------------------------ *
+   * Autosave / restore (localStorage)
+   * ------------------------------------------------------------------ */
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (!hydrated.current) {
+      hydrated.current = true;
+      if (persisted) {
+        notify(`Đã khôi phục workflow đã lưu lúc ${new Date(persisted.savedAt || Date.now()).toLocaleString()}`, "info");
+      }
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (saveState(graphRef.current, executionResult)) setSavedAt(Date.now());
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [graph, executionResult, persisted, notify]);
 
   /* ------------------------------------------------------------------ *
    * Graph mutations (with undo history)
@@ -319,13 +356,17 @@ export default function App() {
       const point = toGraphCoords(event.clientX, event.clientY);
       const { id, offsetX, offsetY } = dragRef.current;
       let moved = dragRef.current.moved;
+      const GRID = 20;
+      const snap = (value) => (snapToGrid ? Math.round(value / GRID) * GRID : Math.round(value));
       applyGraph(
         (g) => ({
           ...g,
           nodes: g.nodes.map((n) => {
             if (n.id !== id) return n;
-            if (Math.abs(n.x - (point.x - offsetX)) > 2 || Math.abs(n.y - (point.y - offsetY)) > 2) moved = true;
-            return { ...n, x: Math.round(point.x - offsetX), y: Math.round(point.y - offsetY) };
+            const nx = snap(point.x - offsetX);
+            const ny = snap(point.y - offsetY);
+            if (Math.abs(n.x - nx) > 2 || Math.abs(n.y - ny) > 2) moved = true;
+            return { ...n, x: nx, y: ny };
           }),
         }),
         { history: false }
@@ -419,14 +460,20 @@ export default function App() {
     setExecutionResult(null);
     setLogs([]);
     setSelectedNodeId(null);
+    clearState();
+    setSavedAt(null);
     notify("Đã xóa toàn bộ Workflow", "info");
   };
 
-  const handleLoadPreset = () => {
-    applyGraph({ nodes: clone(INITIAL_NODES), connections: clone(INITIAL_CONNECTIONS) });
-    setSelectedNodeId("node-5");
-    notify("Đã tải lại Workflow mẫu", "success");
-    window.setTimeout(() => fitView(INITIAL_NODES), 30);
+  const handleLoadPreset = (preset) => {
+    const nodes = clone(preset.nodes);
+    applyGraph({ nodes, connections: clone(preset.connections) });
+    setSelectedNodeId(nodes[0]?.id || null);
+    setExecutionResult(null);
+    setLogs([]);
+    setShowPresets(false);
+    notify(`Đã nạp workflow "${preset.name}"`, "success");
+    window.setTimeout(() => fitView(nodes), 30);
   };
 
   /* ------------------------------------------------------------------ *
@@ -486,12 +533,20 @@ export default function App() {
     notify(`Đã xuất kịch bản định dạng ${format.toUpperCase()}`, "success");
   };
 
-  const handleCopy = async () => {
+  const handleCopy = async (format = "auto") => {
     if (!executionResult) return;
-    const text = JSON.stringify(executionResult, null, 2);
+    const chosen = format === "auto" ? EXPORT_FORMAT_MAP[executionResult.exportFormat] || "json" : format;
+    const text =
+      chosen === "md"
+        ? toMarkdown(executionResult)
+        : chosen === "txt"
+        ? toPlainText(executionResult)
+        : chosen === "prompts"
+        ? toPromptPack(executionResult)
+        : JSON.stringify(executionResult, null, 2);
     try {
       await navigator.clipboard.writeText(text);
-      notify("Đã copy toàn bộ kịch bản vào Clipboard!", "success");
+      notify(`Đã copy kịch bản (định dạng ${chosen.toUpperCase()}) vào Clipboard!`, "success");
     } catch {
       notify("Trình duyệt chặn clipboard — hãy dùng nút xuất JSON.", "error");
     }
@@ -593,6 +648,11 @@ export default function App() {
         else undo();
         return;
       }
+      if (meta && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        handleSaveWorkflow();
+        return;
+      }
       if (meta && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redo();
@@ -613,7 +673,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo, selectedNodeId, handleDeleteNode]);
+  }, [undo, redo, selectedNodeId, handleDeleteNode, handleSaveWorkflow]);
 
   /* ------------------------------------------------------------------ *
    * Derived data
@@ -660,6 +720,12 @@ export default function App() {
             <p className="text-[11px] text-slate-400">
               Trực quan hóa quy trình kịch bản &amp; prompt AI · {graph.nodes.length} nodes ·{" "}
               {graph.connections.length} links
+              {savedAt && (
+                <span className="text-emerald-500/80">
+                  {" "}
+                  · đã lưu {new Date(savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -693,12 +759,12 @@ export default function App() {
           </button>
 
           <button
-            onClick={handleLoadPreset}
+            onClick={() => setShowPresets(true)}
             className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition"
-            title="Tải lại workflow mẫu"
+            title="Thư viện workflow mẫu"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">Preset</span>
+            <Library className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Presets</span>
           </button>
 
           <button
@@ -809,6 +875,16 @@ export default function App() {
             <button onClick={() => fitView()} className="p-1.5 rounded hover:bg-slate-800 text-slate-300" title="Fit view">
               <Maximize2 className="w-4 h-4" />
             </button>
+            <div className="w-[1px] h-4 bg-slate-800" />
+            <button
+              onClick={() => setSnapToGrid((v) => !v)}
+              className={`p-1.5 rounded transition ${
+                snapToGrid ? "bg-indigo-600/30 text-indigo-300" : "hover:bg-slate-800 text-slate-400"
+              }`}
+              title={snapToGrid ? "Đang bắt dính lưới 20px — tắt để di chuyển tự do" : "Bắt dính lưới 20px"}
+            >
+              <Magnet className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Hint */}
@@ -871,6 +947,7 @@ export default function App() {
           onConfigChange={(key, value) => handleConfigChange(selectedNode.id, key, value)}
           onTest={handleTestNode}
           onDelete={handleDeleteNode}
+          onNotify={notify}
         />
       </div>
 
@@ -916,6 +993,15 @@ export default function App() {
             <X className="w-3 h-3" />
           </button>
         </div>
+      )}
+
+      {/* ----------------------------- PRESETS ----------------------------- */}
+      {showPresets && (
+        <PresetsModal
+          currentCount={graph.nodes.length}
+          onClose={() => setShowPresets(false)}
+          onSelect={handleLoadPreset}
+        />
       )}
 
       {/* ------------------------------- HELP ------------------------------ */}

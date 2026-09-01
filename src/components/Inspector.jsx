@@ -1,8 +1,65 @@
-import React from "react";
-import { Sliders, Trash2, Play, Link2, ArrowRight } from "lucide-react";
+import React, { useRef } from "react";
+import { Sliders, Trash2, Play, Link2, ArrowRight, FileUp, ImageOff } from "lucide-react";
 import { getTemplate, getCategory } from "../data/nodeTemplates.js";
+import { fileToThumbnail } from "../lib/image.js";
 
-function Field({ field, value, onChange }) {
+function ImageField({ value, onChange, onNotify }) {
+  const inputRef = useRef(null);
+
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const { dataUrl } = await fileToThumbnail(file);
+      onChange(dataUrl);
+      onNotify?.(`Đã tải ảnh "${file.name}" (tự nén về <360px)`, "success");
+    } catch (error) {
+      onNotify?.(error.message || "Không thể xử lý ảnh", "error");
+    }
+    event.target.value = "";
+  };
+
+  return (
+    <div>
+      <label className="text-[11px] font-medium text-slate-400 block mb-1">Ảnh tham chiếu</label>
+      {value ? (
+        <div className="space-y-1.5">
+          <div className="relative rounded-lg overflow-hidden border border-slate-800 bg-slate-950">
+            <img src={value} alt="Ảnh tham chiếu" className="w-full max-h-40 object-contain" />
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex-1 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-700 transition flex items-center justify-center gap-1"
+            >
+              <FileUp className="w-3 h-3" /> Đổi ảnh
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="px-2 py-1 rounded-lg bg-rose-950/30 hover:bg-rose-900/40 text-[10px] text-rose-300 border border-rose-800/30 transition flex items-center justify-center gap-1"
+            >
+              <ImageOff className="w-3 h-3" /> Xóa
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => inputRef.current?.click()}
+          className="p-3 border border-dashed border-slate-700 rounded-lg text-center hover:border-indigo-500/50 cursor-pointer transition"
+        >
+          <FileUp className="w-5 h-5 mx-auto text-slate-400 mb-1" />
+          <span className="text-[11px] text-indigo-400 font-medium">Tải ảnh lên mẫu</span>
+          <p className="text-[9px] text-slate-500 mt-0.5">PNG, JPG — tự nén còn dưới 360px</p>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+    </div>
+  );
+}
+
+function Field({ field, value, onChange, onNotify }) {
   const label = <label className="text-[11px] font-medium text-slate-400 block mb-1">{field.label}</label>;
   const base =
     "w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition";
@@ -73,6 +130,10 @@ function Field({ field, value, onChange }) {
     );
   }
 
+  if (field.type === "image") {
+    return <ImageField value={value} onChange={onChange} onNotify={onNotify} />;
+  }
+
   if (field.type === "chips") {
     const selected = Array.isArray(value) ? value : [];
     return (
@@ -117,7 +178,16 @@ function Field({ field, value, onChange }) {
   );
 }
 
-export default function Inspector({ node, nodes, connections, onLabelChange, onConfigChange, onTest, onDelete }) {
+export default function Inspector({
+  node,
+  nodes,
+  connections,
+  onLabelChange,
+  onConfigChange,
+  onTest,
+  onDelete,
+  onNotify,
+}) {
   if (!node) {
     return (
       <aside className="w-80 bg-slate-900/95 border-l border-slate-800 flex flex-col shrink-0 z-20">
@@ -180,6 +250,7 @@ export default function Inspector({ node, nodes, connections, onLabelChange, onC
             field={field}
             value={node.config?.[field.key]}
             onChange={(value) => onConfigChange(field.key, value)}
+            onNotify={onNotify}
           />
         ))}
 

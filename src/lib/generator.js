@@ -298,6 +298,7 @@ export function generateWorkflowResult(nodes, connections) {
     ]
       .filter(Boolean)
       .join(" "),
+    exportFormat: cfg(pickByType(nodes, "export_node"), "format", "All-in-One"),
     meta: {
       nodes: nodes.length,
       connections: connections.length,

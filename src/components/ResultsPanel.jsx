@@ -32,12 +32,12 @@ export default function ResultsPanel({
   const exportButtons = result ? (
     <div className="flex items-center space-x-1.5">
       <button
-        onClick={() => onCopy("json")}
+        onClick={() => onCopy("auto")}
         className="flex items-center space-x-1 text-[11px] text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 transition"
-        title="Copy toàn bộ JSON"
+        title={`Copy kết quả theo định dạng của Export Node (${result.exportFormat || "JSON"})`}
       >
         <Copy className="w-3 h-3" />
-        <span className="hidden sm:inline">Copy JSON</span>
+        <span className="hidden sm:inline">Copy {result.exportFormat || "JSON"}</span>
       </button>
       <button
         onClick={() => onExport("json")}

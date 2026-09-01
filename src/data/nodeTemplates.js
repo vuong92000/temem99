@@ -67,6 +67,7 @@ export const NODE_TEMPLATES = [
         options: ["Sản phẩm", "Nhân vật", "Bối cảnh", "Trang phục", "Storyboard"],
       },
       { key: "description", label: "Mô tả hình ảnh", type: "textarea", rows: 3, placeholder: "Mô tả chi tiết góc quay, đặc điểm nhận diện..." },
+      { key: "imageData", label: "Ảnh tham chiếu", type: "image" },
     ],
   },
   {

@@ -41,25 +41,34 @@ Yêu cầu: Node 18+.
 - Xuất / copy: JSON, Markdown, TXT, Prompt Pack.
 
 ### Khác
-- Undo / Redo (Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z), Delete để xóa node, Esc để hủy.
+- Undo / Redo (Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z), Delete để xóa node, Esc để hủy, Ctrl/⌘ + S để lưu JSON.
 - Lưu / nhập lại workflow dạng JSON.
-- Nút **Preset** nạp lại workflow mẫu (serum PureGlow, 9 node).
+- **Tự động lưu** workflow + kết quả vào `localStorage` (debounce 600ms) và khôi phục khi mở lại trang; *Reset* sẽ xóa bản lưu.
+- **Thư viện preset**: TVC Serum Cao Cấp (9 node) · TikTok Review UGC (10 node) · Lookbook Thời Trang (10 node) · Canvas trống.
+- **Upload ảnh thật** cho Image Node: tự nén về <360px trước khi lưu, hiển thị thumbnail ngay trên node card.
+- **Bắt dính lưới** 20px khi kéo node (nút nam châm trên thanh zoom).
+- Nút Copy ở panel kết quả sẽ theo đúng định dạng đang chọn ở **Export Node** (JSON / Markdown / TXT / Prompt Pack).
 
 ## Cấu trúc mã
 
 ```
 src/
 ├── App.jsx                  # điều phối state graph, canvas, thực thi
-├── data/nodeTemplates.js    # 20 node template: category, ports, config schema, preset workflow
+├── data/
+│   ├── nodeTemplates.js     # 20 node template: category, ports, config schema, preset workflow
+│   └── presets.js           # 4 workflow mẫu (TVC / TikTok / Lookbook / trống)
 ├── lib/
 │   ├── graph.js             # vị trí cổng, bezier, topological sort, cycle guard, layout, bounds
-│   └── generator.js         # sinh kịch bản/storyboard/prompt pack + exporter
+│   ├── generator.js         # sinh kịch bản/storyboard/prompt pack + exporter
+│   ├── storage.js           # autosave/restore localStorage (có try/catch quota)
+│   └── image.js             # nén ảnh upload thành thumbnail dataURL
 └── components/
     ├── NodeLibrary.jsx      # sidebar trái (tìm kiếm + kéo thả)
     ├── NodeCard.jsx         # thẻ node trên canvas (cổng nằm sát mép, toạ độ chính xác)
     ├── Connections.jsx      # SVG layer vẽ đường nối
     ├── Inspector.jsx        # sidebar phải (form sinh từ schema)
     ├── ResultsPanel.jsx     # panel dưới (5 tab + export)
+    ├── PresetsModal.jsx     # thư viện workflow mẫu
     └── MiniMap.jsx          # bản đồ thu nhỏ
 ```
 

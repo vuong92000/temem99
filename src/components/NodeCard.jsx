@@ -111,9 +111,17 @@ export default function NodeCard({
       <div className="p-3 text-[11px] space-y-2 text-slate-300">
         {node.type === "image_node" && (
           <div className="p-2 rounded bg-slate-950 border border-slate-800 text-center">
-            <div className="w-full h-12 rounded bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-800 mb-1 flex items-center justify-center">
-              <span className="text-[9px] text-slate-500">{node.config?.imageType || "Chưa chọn"}</span>
-            </div>
+            {node.config?.imageData ? (
+              <img
+                src={node.config.imageData}
+                alt={node.config?.imageType || "Ảnh tham chiếu"}
+                className="w-full h-16 object-cover rounded mb-1 border border-slate-800"
+              />
+            ) : (
+              <div className="w-full h-12 rounded bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-800 mb-1 flex items-center justify-center">
+                <span className="text-[9px] text-slate-500">{node.config?.imageType || "Chưa chọn"}</span>
+              </div>
+            )}
             <span className="text-[10px] text-slate-400 line-clamp-2">
               {node.config?.description || "Chưa có mô tả hình ảnh"}
             </span>

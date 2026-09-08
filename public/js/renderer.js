@@ -15,7 +15,8 @@ export function sceneDuration(scene) {
   if (scene.type === 'title') return 3.0;
   if (scene.type === 'end') return 2.8;
   if (scene.buffer) return 0.55 + scene.buffer.duration + 0.6;
-  return estimateReadTime(scene.text);
+  const speech = [scene.text, scene.dialogue].filter(Boolean).join(' ');
+  return estimateReadTime(speech);
 }
 
 /** Chia lời bình thành các đoạn phụ đề ngắn */
@@ -70,7 +71,9 @@ export function buildTimeline(project) {
     items.push({
       scene, index: i,
       start: t, dur,
-      captions: scene.type === 'body' ? planCaptions(scene.text, dur) : [],
+      captions: scene.type === 'body'
+        ? planCaptions([scene.text, scene.dialogue].filter(Boolean).join(' '), dur)
+        : [],
     });
     t += dur - (i < project.scenes.length - 1 ? TRANS : 0);
   });

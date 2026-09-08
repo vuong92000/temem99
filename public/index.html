@@ -69,6 +69,7 @@
               <button type="button" class="creative-mode" data-creative-mode="product">🛍 Sản phẩm</button>
               <button type="button" class="creative-mode" data-creative-mode="social">📱 Social reel</button>
               <button type="button" class="creative-mode" data-creative-mode="promptlab">🧪 Prompt Lab</button>
+              <button type="button" class="creative-mode" data-creative-mode="shortfilm">🎞 Phim ngắn AI</button>
             </div>
             <p id="modeDescription" class="mode-description">Tạo storyboard có hook, diễn biến và kết luận; mỗi cảnh có prompt ảnh và prompt camera.</p>
             <div class="template-strip">
@@ -77,6 +78,7 @@
               <button type="button" class="template-chip" data-template="lesson">📚 Bài học 60 giây</button>
               <button type="button" class="template-chip" data-template="travel">🗺 Travel story</button>
               <button type="button" class="template-chip" data-template="report">📊 Báo cáo tuần</button>
+              <button type="button" class="template-chip" data-template="shortfilm">🎞 Phim ngắn</button>
             </div>
             <div class="director-fields">
               <label class="field">
@@ -89,6 +91,17 @@
                   <option value="hybrid">⚡ Hybrid — AI trước, thư viện khi lỗi</option>
                   <option value="online">🖼 AI từng cảnh — ưu tiên Pollinations</option>
                   <option value="offline">📚 Offline — thư viện & ảnh procedural</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Thể loại phim ngắn</span>
+                <select id="inputFilmGenre">
+                  <option value="drama">🎭 Tâm lý đời thường</option>
+                  <option value="scifi">🛸 Khoa học viễn tưởng</option>
+                  <option value="mystery">🕵️ Trinh thám bí ẩn</option>
+                  <option value="romance">💞 Tình cảm nhẹ nhàng</option>
+                  <option value="adventure">🗺 Phiêu lưu khám phá</option>
+                  <option value="comedy">😄 Hài duyên dáng</option>
                 </select>
               </label>
               <label class="field">
@@ -212,6 +225,7 @@
             <h3>Cảnh <span id="sceneBadge" class="badge">0</span></h3>
             <button id="btnAddScene" class="btn small" title="Thêm một cảnh trống vào cuối">＋ Thêm</button>
           </div>
+          <div id="filmBiblePanel" class="film-bible-panel hidden"></div>
           <div id="sceneList" class="scene-list"></div>
           <div class="scenes-foot">
             <button id="btnBackCreate" class="btn ghost small">↩ Sửa thiết lập & kịch bản</button>
@@ -344,7 +358,7 @@
       <div class="modal-head"><h3>❓ Hướng dẫn nhanh</h3><button class="btn icon" data-close>✕</button></div>
       <div class="modal-body help-body">
         <ol>
-          <li><b>Nhập chủ đề</b> (hoặc dán kịch bản sẵn) ở màn đầu, chọn tỉ lệ khung, phong cách ảnh, giọng đọc → <b>Tạo video</b>.</li>
+          <li><b>Nhập chủ đề</b> (hoặc dán kịch bản sẵn) ở màn đầu, chọn mode. Với <b>Phim ngắn AI</b>, chọn thể loại để AI tạo film bible, nhân vật, cấu trúc 3 hồi, thoại và shot list → <b>Tạo video</b>.</li>
           <li>AI sẽ lần lượt: viết kịch bản thành các cảnh → đọc lời bình → tạo hình ảnh cho từng cảnh.
               Nếu một dịch vụ online không dùng được, app tự chuyển sang phương án dự phòng (ảnh thư viện, giọng trình duyệt…).</li>
           <li>Ở Studio: <b>nhấp vào textarea để sửa lời bình</b> của từng cảnh; các nút nhỏ bên dưới mỗi cảnh cho phép

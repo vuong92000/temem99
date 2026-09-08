@@ -4,7 +4,8 @@ Bản nâng cấp này thêm một workflow giống kiểu **Google Vids**: ngư
 
 ## Những gì đã tích hợp vào VideoAI Studio
 
-- **AI Director modes:** Storyboard, Thuyết trình, Sản phẩm, Social reel và Prompt Lab.
+- **AI Director modes:** Storyboard, Thuyết trình, Sản phẩm, Social reel, Prompt Lab và **Phim ngắn AI**.
+- **Short-film pipeline:** tạo film bible (logline, thế giới, nhân vật), cấu trúc 3 hồi, shot type và thoại; giữ visual continuity trong prompt của từng cảnh.
 - **Plan trước khi render:** nút `Viết kịch bản & tạo prompt` tạo đề cương để người dùng xem trước trước khi dựng ảnh/voice.
 - **Prompt Lab:** mỗi scene có prompt hình ảnh, prompt chuyển động và negative prompt; có thể tạo lại bằng AI hoặc dùng fallback local.
 - **Camera presets:** slow zoom, pan trái/phải, push-in, parallax và static; renderer canvas áp dụng preset khi preview/export.

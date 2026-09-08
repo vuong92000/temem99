@@ -6,7 +6,8 @@
 
 | Tính năng | Chi tiết |
 |---|---|
-| ✍️ **AI Director / Google Vids-style** | Chọn Storyboard, Thuyết trình, Sản phẩm, Social reel hoặc Prompt Lab → AI viết storyboard có thể xem trước/chỉnh sửa trước khi dựng. |
+| ✍️ **AI Director / Google Vids-style** | Chọn Storyboard, Thuyết trình, Sản phẩm, Social reel, Prompt Lab hoặc **Phim ngắn AI** → AI viết storyboard có thể xem trước/chỉnh sửa trước khi dựng. |
+| 🎞 **AI làm phim ngắn** | Tạo film bible, logline, nhân vật nhất quán, thể loại, cấu trúc 3 hồi, shot type, thoại, prompt ảnh/chuyển động và dựng preview thành video. |
 | 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
 | 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API hoặc **thu âm giọng của chính bạn**. |

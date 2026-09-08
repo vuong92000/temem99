@@ -44,6 +44,16 @@ export const CREATIVE_MODE_CONTEXT = {
   product: 'video giới thiệu sản phẩm, nêu vấn đề, lợi ích và lời kêu gọi hành động',
   social: 'video dọc ngắn cho mạng xã hội, nhịp nhanh, hook mạnh trong 3 giây đầu',
   promptlab: 'bản thử nghiệm hình ảnh, ưu tiên prompt chi tiết và nhất quán thị giác',
+  shortfilm: 'phim ngắn AI điện ảnh 3 hồi, có nhân vật nhất quán, cao trào và kết thúc cảm xúc',
+};
+
+export const FILM_GENRES = {
+  drama: 'tâm lý đời thường, chân thật và giàu cảm xúc',
+  scifi: 'khoa học viễn tưởng, công nghệ và bí ẩn tương lai',
+  mystery: 'trinh thám bí ẩn, căng thẳng nhưng phù hợp khán giả phổ thông',
+  romance: 'tình cảm nhẹ nhàng, tinh tế, không sáo rỗng',
+  adventure: 'phiêu lưu khám phá, giàu hình ảnh và cảm giác kỳ vĩ',
+  comedy: 'hài hước duyên dáng, nhịp nhanh, kết thúc tích cực',
 };
 
 export const VOICE_TONES = {
@@ -129,6 +139,98 @@ export async function generateScriptViaAI(topic, {
   const scenes = parseScenesJSON(content);
   if (!scenes.length) throw new Error('Không đọc được kịch bản từ phản hồi AI');
   return scenes;
+}
+
+/**
+ * Đạo diễn phim ngắn: ngoài scene list còn trả về film bible để giữ
+ * nhân vật, thế giới và tông phim nhất quán giữa các cảnh.
+ */
+export async function generateShortFilmPlanViaAI(topic, {
+  sceneCount = 6,
+  style = 'cinematic',
+  motionStyle = 'slow-zoom',
+  brief = '',
+  genre = 'drama',
+} = {}) {
+  const genreContext = FILM_GENRES[genre] || FILM_GENRES.drama;
+  const suffix = STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic;
+  const motion = MOTION_PRESETS[motionStyle] || MOTION_PRESETS['slow-zoom'];
+  const system = [
+    'Bạn là đạo diễn, biên kịch và storyboard artist cho phim ngắn AI.',
+    `Tạo một phim ngắn ${genreContext}, dài khoảng ${sceneCount} cảnh, theo cấu trúc 3 hồi: mở nút → xung đột/cao trào → kết thúc có dư âm.`,
+    'Nhân vật phải nhất quán: mô tả ngoại hình, trang phục, tuổi và đặc điểm nhận diện trong film bible; lặp lại các chi tiết đó trong prompt ảnh.',
+    'Chỉ trả về DUY NHẤT một object JSON hợp lệ, không markdown, theo đúng schema:',
+    '{"title":"tên phim", "logline":"một câu logline", "worldPrompt":"mô tả thế giới, bảng màu, ánh sáng bằng tiếng Anh",',
+    '"characters":[{"name":"tên", "description":"mô tả tiếng Việt", "visualPrompt":"mô tả nhận diện bằng tiếng Anh"}],',
+    `"scenes":[{"narration":"lời kể tiếng Việt 25-50 từ", "dialogue":"một câu thoại ngắn hoặc chuỗi rỗng", "shotType":"wide/medium/close-up/over-the-shoulder/aerial", "imagePrompt":"prompt ảnh tiếng Anh 25-45 từ, có nhân vật và bối cảnh, ${suffix}", "motionPrompt":"prompt camera tiếng Anh 12-25 từ, ưu tiên ${motion}"}]}`,
+    'Không tạo logo, chữ, watermark. Cảnh 1 phải có hook hình ảnh; cảnh cuối phải khép lại cảm xúc.',
+    brief ? `Ghi chú đạo diễn: ${brief}` : '',
+    `Chủ đề/phôi truyện: ${topic}`,
+  ].filter(Boolean).join('\n');
+  const res = await withTimeout(fetch(`${TEXT_API}/openai?referrer=${REFERRER}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'openai',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: topic }],
+      seed: Math.floor(Math.random() * 1e6),
+      referrer: REFERRER,
+    }),
+  }), 70000, 'Quá thời gian chờ AI đạo diễn phim ngắn');
+  if (!res.ok) throw new Error(`AI phim ngắn trả về ${res.status}`);
+  const ct = res.headers.get('content-type') || '';
+  const content = ct.includes('application/json')
+    ? (await res.json())?.choices?.[0]?.message?.content
+    : await res.text();
+  const plan = parsePlanJSON(content);
+  if (!plan || !Array.isArray(plan.scenes) || !plan.scenes.length) throw new Error('Không đọc được film bible từ AI');
+  return plan;
+}
+
+/** Dự phòng local cho mode phim ngắn, không cần mạng. */
+export function heuristicShortFilmPlan(topic, {
+  sceneCount = 6,
+  style = 'cinematic',
+  motionStyle = 'slow-zoom',
+  brief = '',
+  genre = 'drama',
+} = {}) {
+  const base = heuristicScript(topic, { sceneCount, style, motionStyle, creativeMode: 'shortfilm' });
+  const shotTypes = ['wide establishing shot', 'medium shot', 'close-up', 'over-the-shoulder shot', 'tracking shot', 'aerial closing shot'];
+  const title = (topic || 'Ngày mai bắt đầu từ hôm nay').split(/[.!?]/)[0].trim().slice(0, 62);
+  const character = genre === 'scifi'
+    ? { name: 'Người giữ tín hiệu', description: 'Một nhân vật trẻ tò mò, kiên định, mang theo thiết bị phát sáng nhỏ.', visualPrompt: 'young Vietnamese protagonist, short dark hair, weathered blue jacket, small glowing device, consistent character design' }
+    : { name: 'Nhân vật chính', description: 'Một người trẻ bình thường, ánh mắt giàu suy tư, trang phục giản dị và nhất quán.', visualPrompt: 'young Vietnamese protagonist, thoughtful eyes, simple neutral clothes, consistent face and costume across shots' };
+  const worldPrompt = `cinematic ${FILM_GENRES[genre] || FILM_GENRES.drama}, coherent color palette, atmospheric natural light, ${STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic}`;
+  const scenes = base.map((p, i) => ({
+    ...p,
+    shotType: shotTypes[i % shotTypes.length],
+    dialogue: i === 0 ? 'Mình phải tìm ra câu trả lời.' : i === base.length - 1 ? 'Có lẽ mọi chuyện chỉ vừa bắt đầu.' : '',
+    imagePrompt: `${p.imagePrompt}, ${character.visualPrompt}, ${worldPrompt}, ${shotTypes[i % shotTypes.length]}`,
+    motionPrompt: `${p.motionPrompt}, preserve character identity and cinematic continuity`,
+  }));
+  return {
+    title,
+    logline: `Một câu chuyện ${FILM_GENRES[genre] || FILM_GENRES.drama} bắt đầu từ: ${topic}.`,
+    worldPrompt,
+    characters: [character],
+    scenes,
+    brief,
+  };
+}
+
+/** Trích object JSON từ phản hồi AI. */
+function parsePlanJSON(content) {
+  const raw = String(content || '').trim();
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [fence?.[1], raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch { /* thử ứng viên kế tiếp */ }
+  }
+  return null;
 }
 
 /** Trích mảng JSON từ văn bản AI trả về (chấp nhận cả ```json ... ```) */

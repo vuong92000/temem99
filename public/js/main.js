@@ -5,9 +5,9 @@
 import { $, $$, clamp, toast, download, slugify, fmtTime, escapeHtml, sleep } from './util.js';
 import { THEMES, detectTheme, loadImage, makeSceneCanvas, makeProceduralArt, LIBRARY_LIST } from './art.js';
 import {
-  service, generateScriptViaAI, heuristicScript, generateImageForPrompt,
+  service, generateScriptViaAI, generateShortFilmPlanViaAI, heuristicScript, heuristicShortFilmPlan, generateImageForPrompt,
   synthesizeVoice, generatePromptKitViaAI, getLocalPromptKit,
-  checkTextService, checkImageService, STYLE_SUFFIX, MOTION_PRESETS, VOICE_TONES,
+  checkTextService, checkImageService, STYLE_SUFFIX, MOTION_PRESETS, VOICE_TONES, FILM_GENRES,
 } from './ai.js';
 import { getAudioContext, decodeToBuffer, BrowserTTS, scheduleMusic } from './audio.js';
 import { Renderer, buildTimeline } from './renderer.js';
@@ -38,6 +38,8 @@ const state = {
   style: 'cinematic',
   creativeMode: 'storyboard',
   brief: '',
+  filmGenre: 'drama',
+  filmBible: null,
   imageMode: 'hybrid',
   motionStyle: 'slow-zoom',
   voiceTone: 'natural',
@@ -112,6 +114,7 @@ const ui = {
   labelTopic: $('#labelTopic'),
   inputBrief: $('#inputBrief'),
   inputImageMode: $('#inputImageMode'),
+  inputFilmGenre: $('#inputFilmGenre'),
   inputMotionStyle: $('#inputMotionStyle'),
   inputVoiceTone: $('#inputVoiceTone'),
   inputVoiceRate: $('#inputVoiceRate'),
@@ -133,6 +136,7 @@ const ui = {
   restoreBanner: $('#restoreBanner'),
   sceneList: $('#sceneList'),
   sceneBadge: $('#sceneBadge'),
+  filmBiblePanel: $('#filmBiblePanel'),
   projectTitle: $('#projectTitle'),
   studioVoice: $('#studioVoice'),
   studioVoiceTone: $('#studioVoiceTone'),
@@ -397,6 +401,7 @@ function collectCreateOpts() {
     brief: ui.inputBrief.value.trim(),
     creativeMode: document.querySelector('#creativeModes .creative-mode.active')?.dataset.creativeMode || 'storyboard',
     imageMode: ui.inputImageMode.value,
+    filmGenre: ui.inputFilmGenre.value,
     motionStyle: ui.inputMotionStyle.value,
     voiceTone: ui.inputVoiceTone.value,
     voiceRate: ui.inputVoiceRate.value,
@@ -415,7 +420,7 @@ function collectCreateOpts() {
 function applyOptsToState(o) {
   Object.assign(state, {
     topic: o.topic, brief: o.brief, creativeMode: o.creativeMode,
-    imageMode: o.imageMode, motionStyle: o.motionStyle,
+    filmGenre: o.filmGenre, imageMode: o.imageMode, motionStyle: o.motionStyle,
     voiceTone: o.voiceTone, voiceRate: o.voiceRate,
     aspect: o.aspect, style: o.style, voice: o.voice,
     transition: o.transition, titleCard: o.titleCard, endCard: o.endCard,
@@ -424,7 +429,7 @@ function applyOptsToState(o) {
 }
 
 function planSignature(o) {
-  return [o.mode, o.topic.trim(), o.sceneCount, o.style, o.creativeMode, o.motionStyle, o.brief.trim()].join('|');
+  return [o.mode, o.topic.trim(), o.sceneCount, o.style, o.creativeMode, o.filmGenre, o.motionStyle, o.brief.trim()].join('|');
 }
 
 function normalizePlan(parts, opts) {
@@ -435,51 +440,93 @@ function normalizePlan(parts, opts) {
       imagePrompt: String(p.imagePrompt || local.imagePrompt).trim(),
       motionPrompt: String(p.motionPrompt || local.motionPrompt).trim(),
       negativePrompt: String(p.negativePrompt || local.negativePrompt).trim(),
+      shotType: String(p.shotType || '').trim(),
+      dialogue: String(p.dialogue || '').trim(),
     };
   }).filter(p => p.text);
 }
 
 async function getPlan(opts, { announce = true } = {}) {
   let parts = null;
-  if (opts.mode === 'ai') {
-    try {
-      parts = await generateScriptViaAI(opts.topic, {
+  let filmBible = null;
+  if (opts.creativeMode === 'shortfilm') {
+    if (opts.mode === 'ai') {
+      try {
+        filmBible = await generateShortFilmPlanViaAI(opts.topic, {
+          sceneCount: opts.sceneCount,
+          style: opts.style,
+          motionStyle: opts.motionStyle,
+          brief: opts.brief,
+          genre: opts.filmGenre,
+        });
+        parts = filmBible.scenes;
+        service.text = true;
+        updateServiceChip();
+      } catch (e) {
+        console.warn('AI short film failed:', e);
+        service.text = false;
+        updateServiceChip();
+        if (announce) toast('⚠️ AI phim ngắn tạm thời offline — đã dùng đạo diễn local với film bible dự phòng.', 'warn', 6000);
+      }
+    }
+    if (!filmBible) {
+      filmBible = heuristicShortFilmPlan(opts.topic, {
         sceneCount: opts.sceneCount,
         style: opts.style,
-        creativeMode: opts.creativeMode,
         motionStyle: opts.motionStyle,
         brief: opts.brief,
+        genre: opts.filmGenre,
       });
-      service.text = true;
-      updateServiceChip();
-    } catch (e) {
-      console.warn('AI script failed:', e);
-      service.text = false;
-      updateServiceChip();
-      if (announce) toast('⚠️ AI Director tạm thời offline — đã dựng đề cương local từ gợi ý của bạn.', 'warn', 5000);
+      parts = filmBible.scenes;
+    }
+  } else {
+    if (opts.mode === 'ai') {
+      try {
+        parts = await generateScriptViaAI(opts.topic, {
+          sceneCount: opts.sceneCount,
+          style: opts.style,
+          creativeMode: opts.creativeMode,
+          motionStyle: opts.motionStyle,
+          brief: opts.brief,
+        });
+        service.text = true;
+        updateServiceChip();
+      } catch (e) {
+        console.warn('AI script failed:', e);
+        service.text = false;
+        updateServiceChip();
+        if (announce) toast('⚠️ AI Director tạm thời offline — đã dựng đề cương local từ gợi ý của bạn.', 'warn', 5000);
+      }
+    }
+    if (!parts) {
+      parts = heuristicScript(opts.topic, {
+        sceneCount: opts.sceneCount,
+        style: opts.style,
+        motionStyle: opts.motionStyle,
+        creativeMode: opts.creativeMode,
+      });
     }
   }
-  if (!parts) {
-    parts = heuristicScript(opts.topic, {
-      sceneCount: opts.sceneCount,
-      style: opts.style,
-      motionStyle: opts.motionStyle,
-      creativeMode: opts.creativeMode,
-    });
-  }
-  return normalizePlan(parts, opts);
+  return { parts: normalizePlan(parts, opts), filmBible };
 }
 
-function renderPlanPreview(parts) {
+function renderPlanPreview(parts, filmBible = null) {
   if (!parts?.length) {
     ui.planPreview.classList.add('hidden');
     ui.planPreview.innerHTML = '';
     return;
   }
-  ui.planPreview.innerHTML = `<div class="plan-preview-head"><b>✅ Đề cương ${parts.length} cảnh đã sẵn sàng</b><span>Kiểm tra prompt trước khi tạo video</span></div>` +
+  const bibleHtml = filmBible ? `<div class="film-bible">
+    <div class="film-bible-title">🎞 ${escapeHtml(filmBible.title || 'Phim ngắn AI')}</div>
+    <p>${escapeHtml(filmBible.logline || '')}</p>
+    <small>🌍 ${escapeHtml(filmBible.worldPrompt || '')}</small>
+    <small>👤 Nhân vật: ${(filmBible.characters || []).map(c => escapeHtml(c.name || '')).join(' · ') || 'đang tạo'}</small>
+  </div>` : '';
+  ui.planPreview.innerHTML = `<div class="plan-preview-head"><b>✅ ${filmBible ? 'Film bible + ' : ''}đề cương ${parts.length} cảnh đã sẵn sàng</b><span>Kiểm tra trước khi tạo video</span></div>` + bibleHtml +
     parts.map((p, i) => `<article class="plan-item">
       <div class="plan-num">${String(i + 1).padStart(2, '0')}</div>
-      <div><b>${escapeHtml(p.text.slice(0, 140))}${p.text.length > 140 ? '…' : ''}</b>
+      <div><b>${p.shotType ? `🎥 ${escapeHtml(p.shotType)} · ` : ''}${escapeHtml(p.text.slice(0, 140))}${p.text.length > 140 ? '…' : ''}</b>
+      ${p.dialogue ? `<small>💬 ${escapeHtml(p.dialogue.slice(0, 120))}</small>` : ''}
       <small>🖼 ${escapeHtml(p.imagePrompt.slice(0, 150))}${p.imagePrompt.length > 150 ? '…' : ''}</small>
       <small>🎥 ${escapeHtml(p.motionPrompt.slice(0, 120))}${p.motionPrompt.length > 120 ? '…' : ''}</small></div>
     </article>`).join('');
@@ -508,9 +555,10 @@ async function createFlow() {
   busy('✍️ Đang viết kịch bản…', 'AI Director đang dựng storyboard và bộ prompt cho từng cảnh…', 0.06);
 
   const sig = planSignature(opts);
-  let parts = draftPlan && draftPlan.signature === sig ? draftPlan.parts : null;
-  if (!parts) parts = await getPlan(opts);
-  parts = normalizePlan(parts, opts);
+  let plan = draftPlan && draftPlan.signature === sig ? draftPlan : null;
+  if (!plan) plan = await getPlan(opts);
+  const parts = normalizePlan(plan.parts, opts);
+  state.filmBible = plan.filmBible || null;
   draftPlan = null;
   ui.planPreview.classList.add('hidden');
   ui.planStatus.textContent = 'Đề cương sẽ được tạo lại khi bạn đổi gợi ý.';
@@ -530,6 +578,8 @@ async function createFlow() {
       imagePrompt: p.imagePrompt || '',
       motionPrompt: p.motionPrompt || '',
       negativePrompt: p.negativePrompt || '',
+      shotType: p.shotType || '',
+      dialogue: p.dialogue || '',
       theme: detectTheme(p.text + ' ' + (p.imagePrompt || ''), i),
     });
   });
@@ -617,6 +667,19 @@ async function createFlow() {
 
 /* ═══════════ Studio ═══════════ */
 
+function renderFilmBible() {
+  const bible = state.filmBible;
+  if (!bible || state.creativeMode !== 'shortfilm') {
+    ui.filmBiblePanel.classList.add('hidden');
+    ui.filmBiblePanel.innerHTML = '';
+    return;
+  }
+  ui.filmBiblePanel.innerHTML = `<b>🎞 ${escapeHtml(bible.title || 'Phim ngắn AI')}</b>
+    <p>${escapeHtml(bible.logline || '')}</p>
+    <small>👤 ${(bible.characters || []).map(c => escapeHtml(c.name || '')).join(' · ') || 'Nhân vật đang được phát triển'}</small>`;
+  ui.filmBiblePanel.classList.remove('hidden');
+}
+
 function enterStudio() {
   ui.screenCreate.classList.add('hidden');
   ui.screenStudio.classList.remove('hidden');
@@ -628,6 +691,7 @@ function enterStudio() {
   canvas.width = w; canvas.height = h;
   playhead = 0; playing = false;
   updatePlayUI();
+  renderFilmBible();
   renderSceneList();
   rebuild();
   // Bảo đảm asset (khi khôi phục dự án)
@@ -646,6 +710,7 @@ function syncVoiceUI() {
   if (ui.inputVoiceRate) ui.inputVoiceRate.value = String(state.voiceRate || '1');
   if (ui.inputMotionStyle) ui.inputMotionStyle.value = state.motionStyle || 'slow-zoom';
   if (ui.inputImageMode) ui.inputImageMode.value = state.imageMode || 'hybrid';
+  if (ui.inputFilmGenre) ui.inputFilmGenre.value = state.filmGenre || 'drama';
 }
 
 function kindLabel(sc) {
@@ -690,6 +755,7 @@ function renderSceneList() {
           ${voiceBadge(sc)}
           <span class="m">${kindLabel(sc)}</span>
         </div>
+        ${state.creativeMode === 'shortfilm' && sc.type === 'body' ? `<div class="film-shot"><b>🎞 ${escapeHtml(sc.shotType || 'cinematic shot')}</b>${sc.dialogue ? `<span>💬 ${escapeHtml(sc.dialogue)}</span>` : ''}</div>` : ''}
         ${sc.type === 'body' ? `
         <details class="prompt-details">
           <summary>🧠 Prompt Lab <span>ảnh + chuyển động</span></summary>
@@ -700,7 +766,10 @@ function renderSceneList() {
             <label>Prompt chuyển động
               <textarea class="scene-prompt" data-kind="motion" rows="2" placeholder="Camera, hướng đi, tốc độ…">${escapeHtml(sc.motionPrompt || '')}</textarea>
             </label>
-            <button class="tool prompt-generate" data-act="promptKit">✨ Tạo lại cả hai prompt</button>
+            ${state.creativeMode === 'shortfilm' ? `<label>Thoại nhân vật
+              <textarea class="scene-prompt" data-kind="dialogue" rows="2" placeholder="Một câu thoại ngắn…">${escapeHtml(sc.dialogue || '')}</textarea>
+            </label>` : ''}
+            <button class="tool prompt-generate" data-act="promptKit">✨ Tạo lại prompt ảnh + chuyển động</button>
           </div>
         </details>
         <div class="scene-tools">
@@ -1083,15 +1152,16 @@ function saveProject() {
     const data = {
       v: 1, savedAt: Date.now(),
       title: state.title, topic: state.topic, brief: state.brief, aspect: state.aspect, style: state.style,
-      creativeMode: state.creativeMode, imageMode: state.imageMode, motionStyle: state.motionStyle,
+      creativeMode: state.creativeMode, filmGenre: state.filmGenre, imageMode: state.imageMode, motionStyle: state.motionStyle,
       voiceTone: state.voiceTone, voiceRate: state.voiceRate,
+      filmBible: state.filmBible,
       transition: state.transition, voice: state.voice, music: state.music,
       musicVol: state.musicVol, watermark: state.watermark,
       titleCard: state.titleCard, endCard: state.endCard,
       scenes: state.scenes.map(sc => ({
         type: sc.type, text: sc.text, seed: sc.seed, theme: sc.theme,
         imagePrompt: sc.imagePrompt, motionPrompt: sc.motionPrompt,
-        negativePrompt: sc.negativePrompt,
+        negativePrompt: sc.negativePrompt, shotType: sc.shotType, dialogue: sc.dialogue,
         imageKind: sc.imageKind === 'upload' ? 'library' : sc.imageKind,
         imageRef: sc.imageKind === 'ai' ? sc.imageRef : null,
       })),
@@ -1107,6 +1177,8 @@ function restoreProject(data) {
   state.aspect = RES[data.aspect] ? data.aspect : '16:9';
   state.style = data.style || 'cinematic';
   state.creativeMode = data.creativeMode || 'storyboard';
+  state.filmGenre = data.filmGenre || 'drama';
+  state.filmBible = data.filmBible || null;
   state.imageMode = data.imageMode || 'hybrid';
   state.motionStyle = data.motionStyle || 'slow-zoom';
   state.voiceTone = data.voiceTone || 'natural';
@@ -1125,6 +1197,8 @@ function restoreProject(data) {
       imagePrompt: sc.imagePrompt || '',
       motionPrompt: sc.motionPrompt || '',
       negativePrompt: sc.negativePrompt || '',
+      shotType: sc.shotType || '',
+      dialogue: sc.dialogue || '',
       seed: sc.seed ?? Math.floor(Math.random() * 1e9),
       theme: sc.theme || null,
       imageKind: ['ai', 'library', 'proc', 'upload'].includes(sc.imageKind) ? sc.imageKind : 'proc',
@@ -1161,6 +1235,15 @@ $$('#creativeModes .creative-mode').forEach(btn => {
     $$('#creativeModes .creative-mode').forEach(x => x.classList.remove('active'));
     btn.classList.add('active');
     ui.modeDescription.textContent = CREATIVE_MODES[btn.dataset.creativeMode] || CREATIVE_MODES.storyboard;
+    if (btn.dataset.creativeMode === 'shortfilm') {
+      ui.inputSceneCount.value = '6';
+      ui.sceneCountVal.textContent = '6';
+      ui.inputStyle.value = 'cinematic';
+      ui.inputVoiceTone.value = 'documentary';
+      ui.inputMotionStyle.value = 'slow-zoom';
+      ui.inputFilmGenre.value = ui.inputFilmGenre.value || 'drama';
+      toast('🎞 Mode Phim ngắn AI: AI sẽ tạo film bible, nhân vật, 3 hồi và shot list.', 'info', 4500);
+    }
     draftPlan = null;
     ui.planStatus.textContent = 'Đã đổi mode — hãy tạo lại đề cương để cập nhật prompt.';
     ui.planPreview.classList.add('hidden');
@@ -1172,6 +1255,7 @@ const TEMPLATES = {
   lesson: { mode: 'presentation', topic: 'Một bài học 60 giây giải thích một khái niệm khó bằng ví dụ đời thường', brief: 'Dành cho người mới; mỗi cảnh có một ý chính và ví dụ dễ nhớ.', style: 'minimal', motion: 'slow-zoom' },
   travel: { mode: 'storyboard', topic: 'Một hành trình khám phá điểm đến đẹp ở Việt Nam trong ba ngày', brief: 'Không khí truyền cảm hứng, màu sắc điện ảnh, có nhịp mở đầu và kết thúc.', style: 'cinematic', motion: 'pan-right' },
   report: { mode: 'presentation', topic: 'Báo cáo tuần: kết quả, điểm sáng, rủi ro và kế hoạch tuần tới', brief: 'Giọng chuyên nghiệp, rõ số liệu, phù hợp trình bày nội bộ.', style: 'render3d', motion: 'static' },
+  shortfilm: { mode: 'shortfilm', topic: 'Một người trẻ nhận được tín hiệu bí ẩn và phải lựa chọn giữa an toàn và sự thật', brief: 'Kể theo 3 hồi, nhân vật nhất quán, kết thúc có dư âm và không dùng chữ trên hình.', style: 'cinematic', motion: 'slow-zoom', genre: 'scifi' },
 };
 
 $$('.template-chip').forEach(btn => {
@@ -1182,6 +1266,12 @@ $$('.template-chip').forEach(btn => {
     ui.inputBrief.value = preset.brief;
     ui.inputStyle.value = preset.style;
     ui.inputMotionStyle.value = preset.motion;
+    if (preset.genre) ui.inputFilmGenre.value = preset.genre;
+    if (preset.mode === 'shortfilm') {
+      ui.inputSceneCount.value = '6';
+      ui.sceneCountVal.textContent = '6';
+      ui.inputVoiceTone.value = 'documentary';
+    }
     $$('#creativeModes .creative-mode').forEach(x => x.classList.toggle('active', x.dataset.creativeMode === preset.mode));
     ui.modeDescription.textContent = CREATIVE_MODES[preset.mode];
     draftPlan = null;
@@ -1207,9 +1297,9 @@ ui.btnGeneratePlan.addEventListener('click', async () => {
   ui.btnGeneratePlan.disabled = true;
   ui.planStatus.textContent = '⏳ AI đang viết kịch bản và thiết kế prompt…';
   try {
-    const parts = await getPlan(opts);
-    draftPlan = { signature: planSignature(opts), parts };
-    renderPlanPreview(parts);
+    const plan = await getPlan(opts);
+    draftPlan = { signature: planSignature(opts), parts: plan.parts, filmBible: plan.filmBible };
+    renderPlanPreview(plan.parts, plan.filmBible);
     ui.planStatus.textContent = '✅ Đề cương đã sẵn sàng — bấm Tạo video để dựng các cảnh.';
     toast('✨ AI Director đã tạo xong storyboard + prompt ảnh + prompt chuyển động.', 'ok', 4500);
   } catch (e) {
@@ -1329,6 +1419,7 @@ $('#btnBackCreate').addEventListener('click', () => {
   ui.inputStyle.value = state.style;
   ui.inputVoice.value = state.voice;
   ui.inputBrief.value = state.brief || '';
+  ui.inputFilmGenre.value = state.filmGenre || 'drama';
   ui.inputImageMode.value = state.imageMode || 'hybrid';
   ui.inputMotionStyle.value = state.motionStyle || 'slow-zoom';
   ui.inputVoiceTone.value = state.voiceTone || 'natural';
@@ -1374,6 +1465,7 @@ ui.sceneList.addEventListener('input', e => {
   } else if (e.target.classList.contains('scene-prompt')) {
     if (e.target.dataset.kind === 'image') sc.imagePrompt = e.target.value;
     if (e.target.dataset.kind === 'motion') sc.motionPrompt = e.target.value;
+    if (e.target.dataset.kind === 'dialogue') sc.dialogue = e.target.value;
   } else return;
   saveSoon();
 });

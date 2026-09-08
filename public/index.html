@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoAI Studio — Tạo video bằng AI</title>
+  <meta name="description" content="Tạo video từ một chủ đề: AI viết kịch bản, tạo hình ảnh, đọc lời bình, ghép nhạc nền và xuất video ngay trong trình duyệt.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🎬</span>
+      <div class="brand-text">
+        <h1>VideoAI <span>Studio</span></h1>
+        <p>Tạo video bằng AI ngay trong trình duyệt</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="serviceChip" class="chip" title="Trạng thái các dịch vụ AI online">⏳ Đang kiểm tra AI…</span>
+      <button id="btnHelp" class="btn ghost">❓ Hướng dẫn</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══════════ MÀN 1: TẠO MỚI ══════════ -->
+    <section id="screen-create" class="screen">
+      <div class="create-wrap">
+
+        <div id="restoreBanner" class="restore-banner hidden">
+          <span>📋 Phát hiện dự án đã lưu trước đó.</span>
+          <span class="restore-actions">
+            <button id="btnRestore" class="btn small primary">Khôi phục</button>
+            <button id="btnDiscardRestore" class="btn small ghost">Bỏ</button>
+          </span>
+        </div>
+
+        <div class="hero">
+          <h2>Tạo video từ <span class="grad">một chủ đề</span> — chỉ trong vài phút</h2>
+          <p>Nhập chủ đề (hoặc dán kịch bản sẵn). AI sẽ viết kịch bản, dựng hình, đọc lời bình và ghép nhạc nền.
+             Bạn xem trước, chỉnh sửa từng cảnh, rồi xuất video tải về máy.</p>
+        </div>
+
+        <div class="card form-card">
+          <div class="tabs" id="modeTabs">
+            <button class="tab active" data-mode="ai">✨ AI viết kịch bản</button>
+            <button class="tab" data-mode="manual">📝 Dán kịch bản có sẵn</button>
+          </div>
+
+          <label class="field">
+            <span id="labelTopic">Chủ đề video</span>
+            <textarea id="inputTopic" rows="4"
+              placeholder="Ví dụ: Trí tuệ nhân tạo và tương lai của nhân loại&#10;&#10;Mẹo: càng mô tả rõ bạn muốn nói về điều gì, kịch bản càng chuẩn."></textarea>
+          </label>
+
+          <div class="samples" id="sampleChips">
+            <span class="samples-label">Ý tưởng mẫu:</span>
+          </div>
+
+          <div class="grid-settings">
+            <label class="field">
+              <span>Số cảnh <b id="sceneCountVal">5</b></span>
+              <input type="range" id="inputSceneCount" min="3" max="8" value="5">
+            </label>
+
+            <label class="field">
+              <span>Tỉ lệ khung hình</span>
+              <div class="segmented" id="segAspect">
+                <button type="button" data-v="16:9" class="active">16:9 · YouTube</button>
+                <button type="button" data-v="9:16">9:16 · TikTok</button>
+                <button type="button" data-v="1:1">1:1 · Bài đăng</button>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Phong cách hình ảnh</span>
+              <select id="inputStyle">
+                <option value="cinematic">🎬 Điện ảnh — cinematic</option>
+                <option value="photo">📸 Nhiếp ảnh thực tế</option>
+                <option value="anime">🌸 Anime / minh họa</option>
+                <option value="watercolor">🎨 Màu nước mềm mại</option>
+                <option value="render3d">🧊 3D render hiện đại</option>
+                <option value="minimal">🔹 Tối giản flat design</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Giọng đọc lời bình</span>
+              <select id="inputVoice">
+                <option value="alloy">🟢 Alloy — AI, nữ, tự nhiên (online)</option>
+                <option value="nova">🟣 Nova — AI, nữ, trong trẻo (online)</option>
+                <option value="shimmer">✨ Shimmer — AI, nữ, dịu (online)</option>
+                <option value="echo">🔵 Echo — AI, nam, trầm (online)</option>
+                <option value="onyx">⚫ Onyx — AI, nam, sâu (online)</option>
+                <option value="fable">📜 Fable — AI, kể chuyện (online)</option>
+                <option value="browser">🖥️ Giọng đọc của trình duyệt (offline)</option>
+                <option value="none">🔇 Không có lời bình</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Hiệu ứng chuyển cảnh</span>
+              <select id="inputTransition">
+                <option value="crossfade">🔄 Mờ dần chồng nhau</option>
+                <option value="fade">⬛ Mờ dần qua đen</option>
+                <option value="slide">➡ Trượt sang phải</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="switches">
+            <label class="switch"><input type="checkbox" id="inputTitleCard" checked><i></i>Màn mở đầu</label>
+            <label class="switch"><input type="checkbox" id="inputEndCard" checked><i></i>Màn kết thúc</label>
+            <label class="switch"><input type="checkbox" id="inputMusic" checked><i></i>Nhạc nền</label>
+            <label class="switch"><input type="checkbox" id="inputWatermark" checked><i></i>Logo góc video</label>
+          </div>
+
+          <button id="btnCreate" class="btn primary xl">🚀 Tạo video</button>
+          <p class="hint">💡 Cần internet để dùng <b>ảnh AI</b> và <b>giọng đọc AI</b> (dịch vụ miễn phí của Pollinations.ai).
+             Mất mạng vẫn tạo được video với thư viện ảnh AI sẵn có, giọng đọc trình duyệt và nhạc nền tự sinh.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ MÀN 2: STUDIO ══════════ -->
+    <section id="screen-studio" class="screen hidden">
+      <div class="studio">
+
+        <aside class="scenes-panel">
+          <div class="scenes-head">
+            <h3>Cảnh <span id="sceneBadge" class="badge">0</span></h3>
+            <button id="btnAddScene" class="btn small" title="Thêm một cảnh trống vào cuối">＋ Thêm</button>
+          </div>
+          <div id="sceneList" class="scene-list"></div>
+          <div class="scenes-foot">
+            <button id="btnBackCreate" class="btn ghost small">↩ Sửa thiết lập & kịch bản</button>
+          </div>
+        </aside>
+
+        <div class="stage">
+          <div class="stage-top">
+            <input id="projectTitle" class="title-input" placeholder="Tên video" maxlength="80">
+            <div class="stage-actions">
+              <select id="studioVoice" title="Giọng đọc">
+                <option value="alloy">🟢 Alloy</option>
+                <option value="nova">🟣 Nova</option>
+                <option value="shimmer">✨ Shimmer</option>
+                <option value="echo">🔵 Echo</option>
+                <option value="onyx">⚫ Onyx</option>
+                <option value="fable">📜 Fable</option>
+                <option value="browser">🖥️ Trình duyệt</option>
+                <option value="none">🔇 Không</option>
+              </select>
+              <button id="btnRegenVoice" class="btn small" title="Tạo lại giọng đọc AI cho tất cả các cảnh">🔊↻</button>
+              <label class="switch music-toggle" title="Nhạc nền"><input type="checkbox" id="studioMusic"><i>🎵</i></label>
+              <button id="btnExport" class="btn primary">⬇ Xuất video</button>
+            </div>
+          </div>
+
+          <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="previewCanvas" width="1280" height="720"></canvas>
+            <button id="btnBigPlay" class="play-big" title="Phát (Space)">▶</button>
+          </div>
+
+          <div class="transport">
+            <button id="btnPlay" class="btn icon" title="Phát / Dừng (Space)">▶</button>
+            <span id="timeDisplay" class="time">0:00 / 0:00</span>
+            <div class="timeline" id="timeline" title="Nhấp để tua">
+              <div class="timeline-fill" id="timelineFill"></div>
+              <div class="ticks" id="timelineTicks"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ══════════ OVERLAY BẬN ══════════ -->
+  <div id="busyOverlay" class="overlay hidden">
+    <div class="busy-card">
+      <div class="spinner"></div>
+      <h3 id="busyTitle">Đang tạo video…</h3>
+      <p id="busyText">…</p>
+      <div class="progress"><div id="busyBar"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL XUẤT VIDEO ══════════ -->
+  <div id="exportModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head"><h3>⬇ Xuất video</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body">
+
+        <div id="exportSetup">
+          <div class="kv"><span>Độ phân giải</span><b id="expRes">—</b></div>
+          <div class="kv"><span>Thời lượng</span><b id="expDur">—</b></div>
+          <div class="kv"><span>Số cảnh</span><b id="expScenes">—</b></div>
+          <div class="kv"><span>Lời bình</span><b id="expVoice">—</b></div>
+          <div class="kv"><span>Nhạc nền</span><b id="expMusic">—</b></div>
+          <label class="switch"><input type="checkbox" id="expMonitor" checked><i></i>Phát âm thanh trong khi quay</label>
+          <p class="hint">⚠️ Video được ghi theo <b>thời gian thực</b> — hãy giữ tab này mở và hiển thị cho đến khi hoàn tất.</p>
+          <button id="btnExportStart" class="btn primary xl">⏺ Bắt đầu quay &amp; xuất</button>
+        </div>
+
+        <div id="exportProgress" class="hidden">
+          <p id="expStatus">Đang chuẩn bị…</p>
+          <div class="progress"><div id="expBar"></div></div>
+          <p class="hint center">🎥 Đang quay video… bạn có thể theo dõi trên khung hình.</p>
+        </div>
+
+        <div id="exportResult" class="hidden">
+          <video id="expVideo" controls playsinline></video>
+          <button id="btnDownload" class="btn primary xl">⬇ Tải video về máy</button>
+          <p class="hint center" id="expHint"></p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL THU ÂM ══════════ -->
+  <div id="recordModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head"><h3>🎙 Thu giọng đọc cho cảnh này</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body">
+        <p class="hint">Đọc đoạn văn bên dưới với nhịp nói bình thường. Bạn có thể thu lại nhiều lần tới khi ưng ý.</p>
+        <div id="recText" class="rec-text"></div>
+        <div class="rec-status">
+          <span id="recTimer">0:00</span>
+          <span id="recDot" class="rec-dot hidden"></span>
+        </div>
+        <div class="rec-actions">
+          <button id="btnRecStart" class="btn">⏺ Bắt đầu thu</button>
+          <button id="btnRecStop" class="btn danger hidden">⏹ Dừng</button>
+          <button id="btnRecPlay" class="btn hidden">▶ Nghe lại</button>
+          <button id="btnRecSave" class="btn primary hidden">💾 Dùng bản thu này</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL CHỌN ẢNH THƯ VIỆN ══════════ -->
+  <div id="libModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head"><h3>🖼 Chọn ảnh nền cho cảnh</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body">
+        <div id="libGrid" class="lib-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL HƯỚNG DẪN ══════════ -->
+  <div id="helpModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head"><h3>❓ Hướng dẫn nhanh</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body help-body">
+        <ol>
+          <li><b>Nhập chủ đề</b> (hoặc dán kịch bản sẵn) ở màn đầu, chọn tỉ lệ khung, phong cách ảnh, giọng đọc → <b>Tạo video</b>.</li>
+          <li>AI sẽ lần lượt: viết kịch bản thành các cảnh → đọc lời bình → tạo hình ảnh cho từng cảnh.
+              Nếu một dịch vụ online không dùng được, app tự chuyển sang phương án dự phòng (ảnh thư viện, giọng trình duyệt…).</li>
+          <li>Ở Studio: <b>nhấp vào textarea để sửa lời bình</b> của từng cảnh; các nút nhỏ bên dưới mỗi cảnh cho phép
+              tạo lại ảnh AI, chọn ảnh thư viện, tải ảnh riêng, sinh ảnh trừu tượng, tạo lại giọng đọc, thu giọng của bạn, đổi thứ tự, xoá cảnh.</li>
+          <li>Nhấn <b>▶</b> (hoặc phím Space) để xem trước. Nhấp vào thanh thời gian để tua.</li>
+          <li>Nhấn <b>⬇ Xuất video</b> → video định dạng <b>WebM</b> sẽ được tải về (mở bằng Chrome/Edge, hoặc chuyển sang MP4 bằng công cụ chuyển đổi nếu cần).</li>
+        </ol>
+        <p class="hint">Dự án được tự động lưu vào trình duyệt (trừ giọng đọc & ảnh tải lên) — lần sau vào lại sẽ có nút Khôi phục.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

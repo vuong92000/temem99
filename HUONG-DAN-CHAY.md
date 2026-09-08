@@ -91,7 +91,26 @@ Mọi thay đổi được **tự lưu vào localStorage** — quay lại tab sa
 
 ---
 
-## 4. Xử lý sự cố thường gặp
+## 4. Tạo clip bằng Google Veo 3.1 Lite (tuỳ chọn)
+
+Trong Studio, chọn một cảnh rồi bấm **🎬 Veo**. Bạn có thể nhập Gemini API key, prompt chuyển động, ảnh tham chiếu, tỉ lệ, thời lượng và độ phân giải. Clip MP4 tạo xong sẽ được gắn vào cảnh và có nút tải về.
+
+Nếu muốn chạy server-side bằng đoạn helper Python tương ứng với SDK Google:
+
+```bash
+python -m pip install -r requirements-veo.txt
+# Linux/macOS
+export GEMINI_API_KEY="AIza..."
+# Windows PowerShell: $env:GEMINI_API_KEY="AIza..."
+
+python scripts/veo3_lite_generate.py \
+  --prompt "A wide cinematic shot of a futuristic neon city at night with flying cars. Audio: low synth hum and distant rain sounds." \
+  --output veo3_lite_output.mp4
+```
+
+Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HTML hoặc tin nhắn công khai.
+
+## 5. Xử lý sự cố thường gặp
 
 | Triệu chứng | Nguyên nhân & cách xử lý |
 |---|---|
@@ -104,7 +123,7 @@ Mọi thay đổi được **tự lưu vào localStorage** — quay lại tab sa
 
 ---
 
-## 5. Kiểm tra tự động (tuỳ chọn)
+## 6. Kiểm tra tự động (tuỳ chọn)
 
 Repo kèm kịch bản smoke-test mô phỏng cả luồng online lẫn offline:
 
@@ -116,14 +135,16 @@ Kết quả mong đợi: `24 pass, 0 fail, 0 lỗi runtime`.
 
 ---
 
-## 6. Cấu trúc thư mục
+## 7. Cấu trúc thư mục
 
 ```
 temem99/
 ├── server.js            Máy chủ tĩnh zero-dependency (Node builtin)
 ├── package.json         scripts: start / dev
 ├── scripts/
-│   └── smoke-test.mjs   Kiểm thử tự động (online + offline)
+│   ├── smoke-test.mjs   Kiểm thử tự động (online + offline)
+│   └── veo3_lite_generate.py  Helper Python tạo clip Veo server-side
+├── requirements-veo.txt  Dependency tuỳ chọn cho helper Google Veo
 └── public/
     ├── index.html       Giao diện 2 màn: Tạo mới → Studio
     ├── css/style.css    Theme tối, font Be Vietnam Pro
@@ -140,7 +161,7 @@ temem99/
 
 ---
 
-## 7. Câu hỏi thường gặp
+## 8. Câu hỏi thường gặp
 
 **❓ Có cần API key hay trả phí không?**
 Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần key) và luôn có phương án dự phòng offline.

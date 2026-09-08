@@ -254,6 +254,7 @@
                 <option value="warm">💛 Gần gũi</option>
               </select>
               <button id="btnRegenVoice" class="btn small" title="Tạo lại giọng đọc AI chân thật cho tất cả các cảnh">🔊↻</button>
+              <button id="btnVeo" class="btn small veo-btn" title="Tạo video clip bằng Google Veo cho cảnh đang chọn">🎬 Veo</button>
               <label class="switch music-toggle" title="Nhạc nền"><input type="checkbox" id="studioMusic"><i>🎵</i></label>
               <button id="btnExport" class="btn primary">⬇ Xuất video</button>
             </div>
@@ -362,11 +363,56 @@
           <li>AI sẽ lần lượt: viết kịch bản thành các cảnh → đọc lời bình → tạo hình ảnh cho từng cảnh.
               Nếu một dịch vụ online không dùng được, app tự chuyển sang phương án dự phòng (ảnh thư viện, giọng trình duyệt…).</li>
           <li>Ở Studio: <b>nhấp vào textarea để sửa lời bình</b> của từng cảnh; các nút nhỏ bên dưới mỗi cảnh cho phép
-              tạo lại ảnh AI, chọn ảnh thư viện, tải ảnh riêng, sinh ảnh trừu tượng, tạo lại giọng đọc, thu giọng của bạn, đổi thứ tự, xoá cảnh.</li>
+              tạo ảnh AI, tạo ảnh tham chiếu 🪄, tạo clip Google Veo 🎬, chọn ảnh thư viện, tải ảnh riêng, sinh ảnh trừu tượng, tạo lại giọng đọc, thu giọng của bạn, đổi thứ tự, xoá cảnh.</li>
           <li>Nhấn <b>▶</b> (hoặc phím Space) để xem trước. Nhấp vào thanh thời gian để tua.</li>
           <li>Nhấn <b>⬇ Xuất video</b> → video định dạng <b>WebM</b> sẽ được tải về (mở bằng Chrome/Edge, hoặc chuyển sang MP4 bằng công cụ chuyển đổi nếu cần).</li>
         </ol>
         <p class="hint">Dự án được tự động lưu vào trình duyệt (trừ giọng đọc & ảnh tải lên) — lần sau vào lại sẽ có nút Khôi phục.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL GOOGLE VEO ══════════ -->
+  <div id="veoModal" class="overlay hidden">
+    <div class="modal veo-modal">
+      <div class="modal-head"><h3>🎬 Tạo video bằng Google Veo</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body">
+        <div class="veo-callout"><b>Google Veo 3.1</b><span>Tạo clip 4–8 giây từ prompt và ảnh tham chiếu, có thể có audio native.</span></div>
+        <label class="field">
+          <span>Gemini API key <em>(chỉ dùng trong phiên này)</em></span>
+          <input id="veoApiKey" type="password" autocomplete="off" placeholder="AIza…">
+        </label>
+        <p class="hint">Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio ↗</a>. Key không được lưu vào project; production nên dùng server proxy với biến môi trường.</p>
+        <div class="veo-grid">
+          <label class="field"><span>Model</span>
+            <select id="veoModel">
+              <option value="veo-3.1-generate-preview">Veo 3.1 · quality + audio</option>
+              <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast · thử nhanh</option>
+              <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite · tiết kiệm</option>
+            </select>
+          </label>
+          <label class="field"><span>Tỉ lệ</span>
+            <select id="veoAspect"><option value="16:9">16:9 · landscape</option><option value="9:16">9:16 · portrait</option></select>
+          </label>
+          <label class="field"><span>Thời lượng</span>
+            <select id="veoDuration"><option value="4">4 giây</option><option value="6">6 giây</option><option value="8" selected>8 giây</option></select>
+          </label>
+          <label class="field"><span>Độ phân giải</span>
+            <select id="veoResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="4k">4K</option></select>
+          </label>
+        </div>
+        <label class="field"><span>Prompt video</span><textarea id="veoPrompt" rows="5" placeholder="Describe the action, camera movement, lighting and sound…"></textarea></label>
+        <label class="field"><span>Negative prompt <em>(không bắt buộc)</em></span><input id="veoNegative" type="text" placeholder="shaky camera, blur, text, watermark…"></label>
+        <div id="veoReferenceBox" class="veo-reference hidden"></div>
+        <button id="btnVeoGenerate" class="btn primary xl">🎬 Bắt đầu tạo video Veo</button>
+        <div id="veoProgress" class="hidden">
+          <p id="veoStatus">Đang gửi yêu cầu tới Google Veo…</p><div class="progress"><div id="veoBar"></div></div>
+        </div>
+        <div id="veoResult" class="hidden">
+          <video id="veoVideo" controls playsinline></video>
+          <button id="btnVeoDownload" class="btn primary xl">⬇ Tải clip Veo</button>
+          <p id="veoResultHint" class="hint center"></p>
+        </div>
       </div>
     </div>
   </div>

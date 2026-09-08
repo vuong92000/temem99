@@ -7,7 +7,8 @@ Bản nâng cấp này thêm một workflow giống kiểu **Google Vids**: ngư
 - **AI Director modes:** Storyboard, Thuyết trình, Sản phẩm, Social reel, Prompt Lab và **Phim ngắn AI**.
 - **Short-film pipeline:** tạo film bible (logline, thế giới, nhân vật), cấu trúc 3 hồi, shot type và thoại; giữ visual continuity trong prompt của từng cảnh.
 - **Plan trước khi render:** nút `Viết kịch bản & tạo prompt` tạo đề cương để người dùng xem trước trước khi dựng ảnh/voice.
-- **Prompt Lab:** mỗi scene có prompt hình ảnh, prompt chuyển động và negative prompt; có thể tạo lại bằng AI hoặc dùng fallback local.
+- **Prompt Lab:** mỗi scene có prompt hình ảnh, prompt ảnh tham chiếu, prompt chuyển động và negative prompt; có thể tạo lại bằng AI hoặc dùng fallback local.
+- **Google Veo adapter:** `public/js/veo.js` gọi Gemini REST API theo cơ chế long-running operation, nhận ảnh tham chiếu làm frame đầu, poll trạng thái và gắn MP4 vào scene. API key chỉ dùng trong session, không commit vào repo.
 - **Camera presets:** slow zoom, pan trái/phải, push-in, parallax và static; renderer canvas áp dụng preset khi preview/export.
 - **Voice profile chân thật:** tone tự nhiên, tài liệu, năng lượng, chuyên nghiệp, gần gũi và tốc độ đọc; online audio được gửi kèm hướng dẫn tone/rate, offline dùng Web Speech.
 - **Storyboard editor:** scene cards, đổi thứ tự, scene prompt fields, ảnh AI/thư viện/upload/procedural, nhạc, caption và export WebM.

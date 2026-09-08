@@ -12,6 +12,7 @@ import {
 import { getAudioContext, decodeToBuffer, BrowserTTS, scheduleMusic } from './audio.js';
 import { Renderer, buildTimeline } from './renderer.js';
 import { exportVideo, extForMime } from './exporter.js';
+import { generateVeoVideo, veoModelLabel } from './veo.js';
 
 /* ═══════════ Trạng thái ═══════════ */
 
@@ -150,6 +151,7 @@ const ui = {
   btnPlay: $('#btnPlay'),
   btnBigPlay: $('#btnBigPlay'),
   btnExport: $('#btnExport'),
+  btnVeo: $('#btnVeo'),
   busyOverlay: $('#busyOverlay'),
   busyTitle: $('#busyTitle'),
   busyText: $('#busyText'),
@@ -164,6 +166,12 @@ const ui = {
   btnExportStart: $('#btnExportStart'),
   expStatus: $('#expStatus'), expBar: $('#expBar'),
   expVideo: $('#expVideo'), btnDownload: $('#btnDownload'), expHint: $('#expHint'),
+  // Google Veo modal
+  veoModal: $('#veoModal'), veoApiKey: $('#veoApiKey'), veoModel: $('#veoModel'),
+  veoAspect: $('#veoAspect'), veoDuration: $('#veoDuration'), veoResolution: $('#veoResolution'),
+  veoPrompt: $('#veoPrompt'), veoNegative: $('#veoNegative'), veoReferenceBox: $('#veoReferenceBox'),
+  btnVeoGenerate: $('#btnVeoGenerate'), veoProgress: $('#veoProgress'), veoStatus: $('#veoStatus'), veoBar: $('#veoBar'),
+  veoResult: $('#veoResult'), veoVideo: $('#veoVideo'), btnVeoDownload: $('#btnVeoDownload'), veoResultHint: $('#veoResultHint'),
   // record modal
   recordModal: $('#recordModal'),
   recText: $('#recText'), recTimer: $('#recTimer'), recDot: $('#recDot'),
@@ -223,7 +231,8 @@ function newId() { return 'sc' + Date.now().toString(36) + '_' + (sceneCounter++
 function pushScene(type, props = {}) {
   const sc = {
     id: newId(), type,
-    text: '', imagePrompt: '', motionPrompt: '',
+    text: '', imagePrompt: '', referencePrompt: '', motionPrompt: '',
+    referenceImageRef: null, videoRef: null, videoEl: null,
     imageKind: 'proc', imageRef: null,
     seed: Math.floor(Math.random() * 1e9),
     theme: null, buffer: null, voiceKind: null,
@@ -438,6 +447,7 @@ function normalizePlan(parts, opts) {
     return {
       text: String(p.text || '').trim(),
       imagePrompt: String(p.imagePrompt || local.imagePrompt).trim(),
+      referencePrompt: String(p.referencePrompt || p.imagePrompt || local.imagePrompt).trim(),
       motionPrompt: String(p.motionPrompt || local.motionPrompt).trim(),
       negativePrompt: String(p.negativePrompt || local.negativePrompt).trim(),
       shotType: String(p.shotType || '').trim(),
@@ -576,6 +586,7 @@ async function createFlow() {
     pushScene('body', {
       text: p.text,
       imagePrompt: p.imagePrompt || '',
+      referencePrompt: p.referencePrompt || p.imagePrompt || '',
       motionPrompt: p.motionPrompt || '',
       negativePrompt: p.negativePrompt || '',
       shotType: p.shotType || '',
@@ -717,6 +728,10 @@ function kindLabel(sc) {
   return { ai: '🖼 AI', library: '📚 Thư viện', upload: '⬆ Ảnh riêng', proc: '🎨 Trừu tượng' }[sc.imageKind] || '';
 }
 
+function videoBadge(sc) {
+  return sc.videoRef ? '<span class="m video">🎬 Veo</span>' : '';
+}
+
 function voiceBadge(sc) {
   if (sc.voiceKind === 'ai') return '<span class="m voice">🔊 AI</span>';
   if (sc.voiceKind === 'mic') return '<span class="m mic">🎙 Thu âm</span>';
@@ -753,6 +768,7 @@ function renderSceneList() {
         <div class="scene-meta">
           <span class="m">⏱ ${sceneDurLabel(sc)}s</span>
           ${voiceBadge(sc)}
+          ${videoBadge(sc)}
           <span class="m">${kindLabel(sc)}</span>
         </div>
         ${state.creativeMode === 'shortfilm' && sc.type === 'body' ? `<div class="film-shot"><b>🎞 ${escapeHtml(sc.shotType || 'cinematic shot')}</b>${sc.dialogue ? `<span>💬 ${escapeHtml(sc.dialogue)}</span>` : ''}</div>` : ''}
@@ -763,6 +779,10 @@ function renderSceneList() {
             <label>Prompt hình ảnh
               <textarea class="scene-prompt" data-kind="image" rows="3" placeholder="Prompt tiếng Anh để tạo ảnh…">${escapeHtml(sc.imagePrompt || '')}</textarea>
             </label>
+            <label>Prompt ảnh tham chiếu
+              <textarea class="scene-prompt" data-kind="reference" rows="2" placeholder="Prompt để tạo keyframe/reference image…">${escapeHtml(sc.referencePrompt || sc.imagePrompt || '')}</textarea>
+            </label>
+            ${sc.referenceImageRef ? `<div class="reference-inline"><img src="${escapeHtml(sc.referenceImageRef)}" alt="Ảnh tham chiếu"><span>🪄 Ảnh tham chiếu sẵn sàng cho Veo</span></div>` : ''}
             <label>Prompt chuyển động
               <textarea class="scene-prompt" data-kind="motion" rows="2" placeholder="Camera, hướng đi, tốc độ…">${escapeHtml(sc.motionPrompt || '')}</textarea>
             </label>
@@ -774,6 +794,8 @@ function renderSceneList() {
         </details>
         <div class="scene-tools">
           <button class="tool" data-act="aiImage" title="Tạo ảnh AI riêng cho cảnh này">🖼 AI</button>
+          <button class="tool" data-act="referenceImage" title="Tạo ảnh tham chiếu bằng prompt">🪄 Ref</button>
+          <button class="tool" data-act="veo" title="Tạo video clip bằng Google Veo">🎬 Veo</button>
           <button class="tool" data-act="libImage" title="Chọn ảnh từ thư viện">📚</button>
           <button class="tool" data-act="upload" title="Tải ảnh của bạn lên">⬆️</button>
           <button class="tool" data-act="procImage" title="Sinh ảnh trừu tượng mới">🎨</button>
@@ -796,11 +818,13 @@ function refreshSceneCard(sc) {
   if (!card) return;
   const meta = card.querySelector('.scene-meta');
   if (meta) {
-    meta.innerHTML = `<span class="m">⏱ ${sceneDurLabel(sc)}s</span> ${voiceBadge(sc)} <span class="m">${kindLabel(sc)}</span>`;
+    meta.innerHTML = `<span class="m">⏱ ${sceneDurLabel(sc)}s</span> ${voiceBadge(sc)} ${videoBadge(sc)} <span class="m">${kindLabel(sc)}</span>`;
   }
   const imagePrompt = card.querySelector('.scene-prompt[data-kind="image"]');
+  const referencePrompt = card.querySelector('.scene-prompt[data-kind="reference"]');
   const motionPrompt = card.querySelector('.scene-prompt[data-kind="motion"]');
   if (imagePrompt && document.activeElement !== imagePrompt) imagePrompt.value = sc.imagePrompt || '';
+  if (referencePrompt && document.activeElement !== referencePrompt) referencePrompt.value = sc.referencePrompt || sc.imagePrompt || '';
   if (motionPrompt && document.activeElement !== motionPrompt) motionPrompt.value = sc.motionPrompt || '';
   updateThumb(sc);
 }
@@ -810,6 +834,30 @@ function refreshSceneCard(sc) {
 async function handleSceneAction(sc, act) {
   const idx = state.scenes.indexOf(sc);
   switch (act) {
+    case 'referenceImage': {
+      busy('🪄 Tạo ảnh tham chiếu…', 'Đang tạo keyframe từ prompt để dùng cho Google Veo.', 0.45);
+      try {
+        const kit = sc.referencePrompt || sc.imagePrompt
+          ? { imagePrompt: sc.referencePrompt || sc.imagePrompt }
+          : getLocalPromptKit(sc.text, { style: state.style, motionStyle: state.motionStyle, creativeMode: state.creativeMode });
+        const { url } = await generateImageForPrompt(kit.imagePrompt, sc.seed, RES[state.aspect].w, RES[state.aspect].h);
+        sc.referencePrompt = kit.imagePrompt;
+        sc.referenceImageRef = url;
+        service.image = true;
+        updateServiceChip();
+        hideBusy();
+        renderSceneList();
+        toast('🪄 Đã tạo ảnh tham chiếu. Mở 🎬 Veo để animate cảnh này.', 'ok', 4000);
+        saveSoon();
+      } catch (e) {
+        hideBusy();
+        toast('Không tạo được ảnh tham chiếu — kiểm tra dịch vụ ảnh hoặc dùng prompt khác.', 'err', 6000);
+      }
+      break;
+    }
+    case 'veo':
+      openVeoModal(sc);
+      break;
     case 'promptKit': {
       busy('🧠 Prompt Lab…', 'Đang tối ưu prompt hình ảnh và chuyển động cho cảnh này.', 0.35);
       try {
@@ -1070,6 +1118,115 @@ ui.btnRecSave.addEventListener('click', async () => {
   }
 });
 
+/* ═══════════ Google Veo ═══════════ */
+
+let veoTargetScene = null;
+let veoObjectUrl = null;
+
+function currentBodyScene() {
+  const direct = selectedSceneId && state.scenes.find(s => s.id === selectedSceneId);
+  if (direct?.type === 'body') return direct;
+  const active = itemAt(playhead)?.scene;
+  return active?.type === 'body' ? active : state.scenes.find(s => s.type === 'body') || null;
+}
+
+function openVeoModal(sc) {
+  if (!sc) {
+    toast('Hãy chọn một cảnh nội dung trước khi tạo video Veo.', 'warn');
+    return;
+  }
+  veoTargetScene = sc;
+  const savedKey = sessionStorage.getItem('videoai-veo-key') || '';
+  ui.veoApiKey.value = savedKey;
+  ui.veoModel.value = 'veo-3.1-generate-preview';
+  ui.veoAspect.value = state.aspect === '9:16' ? '9:16' : '16:9';
+  ui.veoDuration.value = '8';
+  ui.veoResolution.value = '720p';
+  ui.veoPrompt.value = [sc.motionPrompt, sc.text, sc.dialogue ? `Dialogue: ${sc.dialogue}` : ''].filter(Boolean).join('. ');
+  ui.veoNegative.value = sc.negativePrompt || 'shaky camera, blur, text, logo, watermark';
+  if (sc.referenceImageRef) {
+    ui.veoReferenceBox.innerHTML = `<img src="${escapeHtml(sc.referenceImageRef)}" alt="Ảnh tham chiếu"><span>🪄 Ảnh tham chiếu của cảnh này sẽ làm frame đầu cho Veo.</span>`;
+    ui.veoReferenceBox.classList.remove('hidden');
+  } else {
+    ui.veoReferenceBox.innerHTML = '<span>Chưa có ảnh tham chiếu. Hãy đóng modal và bấm 🪄 Ref trong cảnh để tạo một ảnh trước.</span>';
+    ui.veoReferenceBox.classList.remove('hidden');
+  }
+  ui.veoProgress.classList.add('hidden');
+  ui.veoResult.classList.add('hidden');
+  ui.veoBar.style.width = '0%';
+  ui.btnVeoGenerate.disabled = false;
+  ui.veoModal.classList.remove('hidden');
+}
+
+ui.veoApiKey.addEventListener('input', () => {
+  sessionStorage.setItem('videoai-veo-key', ui.veoApiKey.value.trim());
+});
+
+ui.btnVeoGenerate.addEventListener('click', async () => {
+  if (!veoTargetScene) return;
+  const apiKey = ui.veoApiKey.value.trim();
+  if (!apiKey) {
+    toast('Hãy nhập Gemini API key để gọi Google Veo.', 'warn');
+    ui.veoApiKey.focus();
+    return;
+  }
+  ui.btnVeoGenerate.disabled = true;
+  ui.veoProgress.classList.remove('hidden');
+  ui.veoResult.classList.add('hidden');
+  try {
+    const result = await generateVeoVideo({
+      apiKey,
+      model: ui.veoModel.value,
+      prompt: ui.veoPrompt.value,
+      negativePrompt: ui.veoNegative.value,
+      imageUrl: veoTargetScene.referenceImageRef || null,
+      aspectRatio: ui.veoAspect.value,
+      durationSeconds: ui.veoDuration.value,
+      resolution: ui.veoResolution.value,
+      onProgress: (p, text) => {
+        ui.veoBar.style.width = `${Math.round(p * 100)}%`;
+        ui.veoStatus.textContent = text;
+      },
+    });
+    if (veoObjectUrl) URL.revokeObjectURL(veoObjectUrl);
+    veoObjectUrl = URL.createObjectURL(result.blob);
+    const video = document.createElement('video');
+    video.src = veoObjectUrl;
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = resolve;
+      video.onerror = () => reject(new Error('Không đọc được clip Veo vừa tạo.'));
+      setTimeout(() => resolve(), 12000);
+    });
+    veoTargetScene.videoRef = veoObjectUrl;
+    veoTargetScene.videoEl = video;
+    veoTargetScene.videoModel = result.model;
+    ui.veoVideo.src = veoObjectUrl;
+    ui.veoResultHint.textContent = `${veoModelLabel(result.model)} · clip đã gắn vào cảnh hiện tại. Khi xuất video, renderer sẽ dùng clip này thay cho ảnh tĩnh.`;
+    ui.veoProgress.classList.add('hidden');
+    ui.veoResult.classList.remove('hidden');
+    rebuild();
+    renderSceneList();
+    toast('🎬 Google Veo đã tạo xong clip và gắn vào cảnh.', 'ok', 5000);
+  } catch (error) {
+    ui.veoProgress.classList.add('hidden');
+    ui.veoStatus.textContent = error.message || 'Veo tạo video thất bại.';
+    toast(`Google Veo lỗi: ${escapeHtml(error.message || 'kiểm tra API key/quota')}`, 'err', 8000);
+  } finally {
+    ui.btnVeoGenerate.disabled = false;
+  }
+});
+
+ui.btnVeoDownload.addEventListener('click', () => {
+  if (!veoObjectUrl) return;
+  const a = document.createElement('a');
+  a.href = veoObjectUrl;
+  a.download = `${slugify(veoTargetScene?.text || 'veo-clip')}.mp4`;
+  a.click();
+});
+
 /* ═══════════ Xuất video ═══════════ */
 
 function fillExportSetup() {
@@ -1083,6 +1240,8 @@ function fillExportSetup() {
     : 'Không';
   ui.expMusic.textContent = state.music ? 'Có' : 'Không';
 }
+
+ui.btnVeo.addEventListener('click', () => openVeoModal(currentBodyScene()));
 
 ui.btnExport.addEventListener('click', () => {
   pause();
@@ -1160,7 +1319,8 @@ function saveProject() {
       titleCard: state.titleCard, endCard: state.endCard,
       scenes: state.scenes.map(sc => ({
         type: sc.type, text: sc.text, seed: sc.seed, theme: sc.theme,
-        imagePrompt: sc.imagePrompt, motionPrompt: sc.motionPrompt,
+        imagePrompt: sc.imagePrompt, referencePrompt: sc.referencePrompt, motionPrompt: sc.motionPrompt,
+        referenceImageRef: sc.referenceImageRef || null,
         negativePrompt: sc.negativePrompt, shotType: sc.shotType, dialogue: sc.dialogue,
         imageKind: sc.imageKind === 'upload' ? 'library' : sc.imageKind,
         imageRef: sc.imageKind === 'ai' ? sc.imageRef : null,
@@ -1195,6 +1355,8 @@ function restoreProject(data) {
     pushScene(sc.type || 'body', {
       text: sc.text || '',
       imagePrompt: sc.imagePrompt || '',
+      referencePrompt: sc.referencePrompt || sc.imagePrompt || '',
+      referenceImageRef: sc.referenceImageRef || null,
       motionPrompt: sc.motionPrompt || '',
       negativePrompt: sc.negativePrompt || '',
       shotType: sc.shotType || '',
@@ -1464,6 +1626,7 @@ ui.sceneList.addEventListener('input', e => {
     refreshDurOnly(sc);
   } else if (e.target.classList.contains('scene-prompt')) {
     if (e.target.dataset.kind === 'image') sc.imagePrompt = e.target.value;
+    if (e.target.dataset.kind === 'reference') sc.referencePrompt = e.target.value;
     if (e.target.dataset.kind === 'motion') sc.motionPrompt = e.target.value;
     if (e.target.dataset.kind === 'dialogue') sc.dialogue = e.target.value;
   } else return;

@@ -10,6 +10,8 @@
 | 🎞 **AI làm phim ngắn** | Tạo film bible, logline, nhân vật nhất quán, thể loại, cấu trúc 3 hồi, shot type, thoại, prompt ảnh/chuyển động và dựng preview thành video. |
 | 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
+| 🪄 **Ảnh tham chiếu** | Tạo keyframe/reference image riêng bằng prompt cho từng cảnh, dùng làm frame đầu khi gọi Veo. |
+| 🎬 **Google Veo** | Gọi Veo 3.1/3.1 Fast/Lite qua Gemini REST API, poll tác vụ dài, xem/tải MP4 và gắn clip vào scene để preview/export. |
 | 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API hoặc **thu âm giọng của chính bạn**. |
 | 🎵 **Nhạc nền tự sinh** | Nhạc ambient (đệm hợp âm + reverb) sinh bằng Web Audio — không cần file nhạc, trộn thẳng vào video xuất ra. |
 | 🎥 **Hiệu ứng điện ảnh** | Ken Burns (zoom/pan chậm), 3 kiểu chuyển cảnh, phụ đề tự chia câu động, màn mở đầu/kết thúc, watermark. |
@@ -43,6 +45,7 @@ public/
   js/
     main.js          Bộ điều phối: state, luồng tạo video, UI, phát/xem trước
     ai.js            Gọi Pollinations.ai (kịch bản / ảnh / giọng đọc) + fallback
+    veo.js           Adapter Gemini REST API / Google Veo 3.1, poll operation + MP4
     art.js           Nhận diện chủ đề, ảnh thủ tục (procedural art), thư viện ảnh
     audio.js         AudioContext, Web Speech API, nhạc nền Web Audio
     renderer.js      Timeline + vẽ từng khung hình (Ken Burns, phụ đề, chuyển cảnh)
@@ -56,6 +59,8 @@ public/
 ## ⚠️ Lưu ý
 
 - Dịch vụ AI online dùng **Pollinations.ai** (miễn phí, không cần key) — có giới hạn tốc độ; khi vượt giới hạn app tự chuyển sang fallback.
+- Google Veo cần **Gemini API key**. Trong Studio bấm **🎬 Veo**, nhập key lấy từ [Google AI Studio](https://aistudio.google.com/apikey), chọn model/tỉ lệ/thời lượng/độ phân giải. Key chỉ nằm trong sessionStorage của trình duyệt; production nên dùng server proxy, không commit key.
+- Veo tạo clip bất đồng bộ 4–8 giây và có thể nhận ảnh đầu vào; clip MP4 được gắn vào scene hiện tại. Video tổng hợp vẫn có thể xuất bằng MediaRecorder/WebM.
 - Video xuất ra là **WebM** (mở bằng Chrome/Edge, đăng thẳng lên YouTube/TikTok được). Cần MP4 thì dùng công cụ chuyển đổi (vd. CloudConvert, ffmpeg).
 - Quá trình xuất chạy **theo thời gian thực** — giữ tab mở và hiển thị cho đến khi xong.
 - Giọng đọc trình duyệt chỉ phát khi xem trước, **không ghi được** vào file xuất ra — muốn có giọng trong video hãy dùng giọng AI online hoặc nút 🎫 thu âm.

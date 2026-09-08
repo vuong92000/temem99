@@ -14,6 +14,7 @@ const FONT = `"Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif
 export function sceneDuration(scene) {
   if (scene.type === 'title') return 3.0;
   if (scene.type === 'end') return 2.8;
+  if (scene.videoEl?.duration && Number.isFinite(scene.videoEl.duration)) return scene.videoEl.duration;
   if (scene.buffer) return 0.55 + scene.buffer.duration + 0.6;
   const speech = [scene.text, scene.dialogue].filter(Boolean).join(' ');
   return estimateReadTime(speech);
@@ -192,7 +193,16 @@ export class Renderer {
     const dy = (H - dh) / 2 + lerp(kb.y0, kb.y1, e) * H;
 
     const asset = assets.get(it.scene.id);
-    if (asset && asset.canvas) {
+    const video = it.scene.videoEl;
+    if (video && video.readyState >= 2) {
+      try {
+        const videoT = clamp(localT, 0, Math.max(0, (video.duration || it.dur) - 0.02));
+        if (Math.abs((video.currentTime || 0) - videoT) > 0.08) video.currentTime = videoT;
+        ctx.drawImage(video, dx, dy, dw, dh);
+      } catch {
+        if (asset?.canvas) ctx.drawImage(asset.canvas, dx, dy, dw, dh);
+      }
+    } else if (asset && asset.canvas) {
       ctx.drawImage(asset.canvas, dx, dy, dw, dh);
     } else {
       const g = ctx.createLinearGradient(dx, dy, dx + dw, dy + dh);

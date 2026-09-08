@@ -181,7 +181,7 @@ async function fallbackAsset(sc, w, h) {
   const th = THEMES[theme];
   if (th && th.lib) {
     try {
-      const img = await loadImage(`/library/${th.lib}`);
+      const img = await loadImage(`library/${th.lib}`);
       sc.imageKind = 'library';
       return makeSceneCanvas(img, w, h, theme, sc.seed);
     } catch { /* xuống thủ tục */ }
@@ -206,7 +206,7 @@ async function ensureAsset(sc) {
       const img = await loadImage(sc.imageRef);
       cnv = makeSceneCanvas(img, w, h, sc.theme, sc.seed);
     } else if (sc.imageKind === 'library' && THEMES[sc.theme]?.lib) {
-      const img = await loadImage(`/library/${THEMES[sc.theme].lib}`);
+      const img = await loadImage(`library/${THEMES[sc.theme].lib}`);
       cnv = makeSceneCanvas(img, w, h, sc.theme, sc.seed);
     } else {
       cnv = makeProceduralArt(w, h, sc.seed, sc.theme || 'cool');

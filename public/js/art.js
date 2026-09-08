@@ -248,4 +248,4 @@ export function makeProceduralArt(w, h, seed, themeKey = 'cool') {
 /** Danh sách ảnh thư viện để hiển thị trong modal chọn */
 export const LIBRARY_LIST = Object.entries(THEMES)
   .filter(([, t]) => t.lib)
-  .map(([key, t]) => ({ key, label: t.label, src: `/library/${t.lib}` }));
+  .map(([key, t]) => ({ key, label: t.label, src: `library/${t.lib}` }));

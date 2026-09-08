@@ -18,6 +18,7 @@
 ## 🚀 Chạy ứng dụng
 
 > 📖 **Hướng dẫn chi tiết từng bước (cài đặt, sử dụng, xử lý sự cố): xem [HUONG-DAN-CHAY.md](HUONG-DAN-CHAY.md)**
+> 🌐 **Chạy trực tuyến trên GitHub (Pages / Codespaces): xem [HUONG-DAN-GITHUB.md](HUONG-DAN-GITHUB.md)** — bản demo: https://vuong92000.github.io/temem99/
 
 ```bash
 node server.js        # hoặc: npm start

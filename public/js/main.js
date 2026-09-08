@@ -6,7 +6,8 @@ import { $, $$, clamp, toast, download, slugify, fmtTime, escapeHtml, sleep } fr
 import { THEMES, detectTheme, loadImage, makeSceneCanvas, makeProceduralArt, LIBRARY_LIST } from './art.js';
 import {
   service, generateScriptViaAI, heuristicScript, generateImageForPrompt,
-  synthesizeVoice, checkTextService, checkImageService, STYLE_SUFFIX,
+  synthesizeVoice, generatePromptKitViaAI, getLocalPromptKit,
+  checkTextService, checkImageService, STYLE_SUFFIX, MOTION_PRESETS, VOICE_TONES,
 } from './ai.js';
 import { getAudioContext, decodeToBuffer, BrowserTTS, scheduleMusic } from './audio.js';
 import { Renderer, buildTimeline } from './renderer.js';
@@ -35,6 +36,12 @@ const state = {
   topic: '',
   aspect: '16:9',
   style: 'cinematic',
+  creativeMode: 'storyboard',
+  brief: '',
+  imageMode: 'hybrid',
+  motionStyle: 'slow-zoom',
+  voiceTone: 'natural',
+  voiceRate: '1',
   transition: 'crossfade',
   voice: 'alloy',        // tên giọng AI | 'browser' | 'none'
   music: true,
@@ -54,6 +61,42 @@ let selectedSceneId = null;
 let lastActiveSceneId = null;
 let mode = 'ai';
 let sceneCounter = 0;
+let draftPlan = null;
+
+const CREATIVE_MODES = {
+  storyboard: 'Tạo storyboard có hook, diễn biến và kết luận; mỗi cảnh có prompt ảnh và prompt camera.',
+  presentation: 'Tạo video thuyết trình có tiêu đề, luận điểm rõ ràng và nhịp đọc chuyên nghiệp.',
+  product: 'Tạo video giới thiệu sản phẩm theo mạch vấn đề → lợi ích → bằng chứng → kêu gọi hành động.',
+  social: 'Tạo video dọc ngắn với hook mạnh, câu ngắn, hình ảnh bắt mắt và camera chuyển động rõ.',
+  promptlab: 'Ưu tiên bộ prompt chi tiết, nhất quán nhân vật/bối cảnh và dễ đưa sang model ảnh/video khác.',
+};
+
+const OPEN_SOURCE_REFERENCES = [
+  {
+    name: 'Timeline Studio / ai-video-editor',
+    url: 'https://github.com/MartinDelophy/ai-video-editor',
+    tag: 'timeline + local-first',
+    text: 'Tham khảo cách tổ chức timeline, track, captions và workflow local-first; bản này giữ canvas timeline zero-dependency.',
+  },
+  {
+    name: 'OpenCut-AI',
+    url: 'https://github.com/Ekaanth/OpenCut-AI',
+    tag: 'AI editor + text workflow',
+    text: 'Tham khảo scene editing, edit-by-text, template gallery và voice workflow; chưa vendored backend nặng vào repo này.',
+  },
+  {
+    name: 'VideoSOS',
+    url: 'https://github.com/timoncool/videosos',
+    tag: 'image/video/voice models',
+    text: 'Tham khảo mô hình media đa phương thức và image-to-video; VideoAI Studio dùng adapter Pollinations + fallback offline.',
+  },
+  {
+    name: 'Automated Video Generator',
+    url: 'https://github.com/itsPremkumar/Automated-Video-Generator',
+    tag: 'agentic pipeline',
+    text: 'Tham khảo pipeline topic → script → voice → visuals → render và ý tưởng prompt director.',
+  },
+];
 
 const canvas = $('#previewCanvas');
 const renderer = new Renderer(canvas);
@@ -67,6 +110,15 @@ const ui = {
   screenStudio: $('#screen-studio'),
   inputTopic: $('#inputTopic'),
   labelTopic: $('#labelTopic'),
+  inputBrief: $('#inputBrief'),
+  inputImageMode: $('#inputImageMode'),
+  inputMotionStyle: $('#inputMotionStyle'),
+  inputVoiceTone: $('#inputVoiceTone'),
+  inputVoiceRate: $('#inputVoiceRate'),
+  btnGeneratePlan: $('#btnGeneratePlan'),
+  planStatus: $('#planStatus'),
+  planPreview: $('#planPreview'),
+  modeDescription: $('#modeDescription'),
   inputSceneCount: $('#inputSceneCount'),
   sceneCountVal: $('#sceneCountVal'),
   inputStyle: $('#inputStyle'),
@@ -83,7 +135,10 @@ const ui = {
   sceneBadge: $('#sceneBadge'),
   projectTitle: $('#projectTitle'),
   studioVoice: $('#studioVoice'),
+  studioVoiceTone: $('#studioVoiceTone'),
   studioMusic: $('#studioMusic'),
+  sourcesModal: $('#sourcesModal'),
+  sourceList: $('#sourceList'),
   timeDisplay: $('#timeDisplay'),
   timeline: $('#timeline'),
   timelineFill: $('#timelineFill'),
@@ -164,7 +219,7 @@ function newId() { return 'sc' + Date.now().toString(36) + '_' + (sceneCounter++
 function pushScene(type, props = {}) {
   const sc = {
     id: newId(), type,
-    text: '', imagePrompt: '',
+    text: '', imagePrompt: '', motionPrompt: '',
     imageKind: 'proc', imageRef: null,
     seed: Math.floor(Math.random() * 1e9),
     theme: null, buffer: null, voiceKind: null,
@@ -302,7 +357,7 @@ function play() {
       const it = itemAt(playhead);
       if (it && it.scene.type === 'body' && it.scene.id !== lastSpokenId && playhead - it.start < 1.5) {
         lastSpokenId = it.scene.id;
-        browserTTS.speak(it.scene.text);
+        browserTTS.speak(it.scene.text, { rate: Number(state.voiceRate) || 1 });
       }
     }
     renderFrame(); updateTimeUI();
@@ -339,6 +394,12 @@ function collectCreateOpts() {
   return {
     mode,
     topic: ui.inputTopic.value,
+    brief: ui.inputBrief.value.trim(),
+    creativeMode: document.querySelector('#creativeModes .creative-mode.active')?.dataset.creativeMode || 'storyboard',
+    imageMode: ui.inputImageMode.value,
+    motionStyle: ui.inputMotionStyle.value,
+    voiceTone: ui.inputVoiceTone.value,
+    voiceRate: ui.inputVoiceRate.value,
     sceneCount: parseInt(ui.inputSceneCount.value, 10) || 5,
     aspect: $('#segAspect button.active').dataset.v,
     style: ui.inputStyle.value,
@@ -353,10 +414,76 @@ function collectCreateOpts() {
 
 function applyOptsToState(o) {
   Object.assign(state, {
-    topic: o.topic, aspect: o.aspect, style: o.style, voice: o.voice,
+    topic: o.topic, brief: o.brief, creativeMode: o.creativeMode,
+    imageMode: o.imageMode, motionStyle: o.motionStyle,
+    voiceTone: o.voiceTone, voiceRate: o.voiceRate,
+    aspect: o.aspect, style: o.style, voice: o.voice,
     transition: o.transition, titleCard: o.titleCard, endCard: o.endCard,
     music: o.music, watermark: o.watermark,
   });
+}
+
+function planSignature(o) {
+  return [o.mode, o.topic.trim(), o.sceneCount, o.style, o.creativeMode, o.motionStyle, o.brief.trim()].join('|');
+}
+
+function normalizePlan(parts, opts) {
+  return (parts || []).slice(0, opts.sceneCount).map((p, i) => {
+    const local = getLocalPromptKit(p.text || opts.topic, opts);
+    return {
+      text: String(p.text || '').trim(),
+      imagePrompt: String(p.imagePrompt || local.imagePrompt).trim(),
+      motionPrompt: String(p.motionPrompt || local.motionPrompt).trim(),
+      negativePrompt: String(p.negativePrompt || local.negativePrompt).trim(),
+    };
+  }).filter(p => p.text);
+}
+
+async function getPlan(opts, { announce = true } = {}) {
+  let parts = null;
+  if (opts.mode === 'ai') {
+    try {
+      parts = await generateScriptViaAI(opts.topic, {
+        sceneCount: opts.sceneCount,
+        style: opts.style,
+        creativeMode: opts.creativeMode,
+        motionStyle: opts.motionStyle,
+        brief: opts.brief,
+      });
+      service.text = true;
+      updateServiceChip();
+    } catch (e) {
+      console.warn('AI script failed:', e);
+      service.text = false;
+      updateServiceChip();
+      if (announce) toast('⚠️ AI Director tạm thời offline — đã dựng đề cương local từ gợi ý của bạn.', 'warn', 5000);
+    }
+  }
+  if (!parts) {
+    parts = heuristicScript(opts.topic, {
+      sceneCount: opts.sceneCount,
+      style: opts.style,
+      motionStyle: opts.motionStyle,
+      creativeMode: opts.creativeMode,
+    });
+  }
+  return normalizePlan(parts, opts);
+}
+
+function renderPlanPreview(parts) {
+  if (!parts?.length) {
+    ui.planPreview.classList.add('hidden');
+    ui.planPreview.innerHTML = '';
+    return;
+  }
+  ui.planPreview.innerHTML = `<div class="plan-preview-head"><b>✅ Đề cương ${parts.length} cảnh đã sẵn sàng</b><span>Kiểm tra prompt trước khi tạo video</span></div>` +
+    parts.map((p, i) => `<article class="plan-item">
+      <div class="plan-num">${String(i + 1).padStart(2, '0')}</div>
+      <div><b>${escapeHtml(p.text.slice(0, 140))}${p.text.length > 140 ? '…' : ''}</b>
+      <small>🖼 ${escapeHtml(p.imagePrompt.slice(0, 150))}${p.imagePrompt.length > 150 ? '…' : ''}</small>
+      <small>🎥 ${escapeHtml(p.motionPrompt.slice(0, 120))}${p.motionPrompt.length > 120 ? '…' : ''}</small></div>
+    </article>`).join('');
+  ui.planPreview.classList.remove('hidden');
 }
 
 function deriveTitle(topic, parts) {
@@ -377,23 +504,16 @@ async function createFlow() {
   }
   applyOptsToState(opts);
   const n = opts.sceneCount;
-  const bodyTarget = n;
 
-  busy('✍️ Đang viết kịch bản…', 'Đang nhờ AI viết kịch bản cho video của bạn…', 0.06);
+  busy('✍️ Đang viết kịch bản…', 'AI Director đang dựng storyboard và bộ prompt cho từng cảnh…', 0.06);
 
-  let parts = null;
-  if (opts.mode === 'ai') {
-    try {
-      parts = await generateScriptViaAI(opts.topic, { sceneCount: n, style: opts.style });
-      service.text = true;
-      updateServiceChip();
-    } catch (e) {
-      console.warn('AI script failed:', e);
-      service.text = false;
-      toast('⚠️ Không gọi được <b>AI viết kịch bản online</b> — đã dùng phương án dự phòng (chia văn bản thành cảnh).', 'warn', 6500);
-    }
-  }
-  if (!parts) parts = heuristicScript(opts.topic, { sceneCount: n, style: opts.style });
+  const sig = planSignature(opts);
+  let parts = draftPlan && draftPlan.signature === sig ? draftPlan.parts : null;
+  if (!parts) parts = await getPlan(opts);
+  parts = normalizePlan(parts, opts);
+  draftPlan = null;
+  ui.planPreview.classList.add('hidden');
+  ui.planStatus.textContent = 'Đề cương sẽ được tạo lại khi bạn đổi gợi ý.';
 
   state.title = deriveTitle(opts.topic, parts);
   const overallTheme = detectTheme(opts.topic + ' ' + parts.map(p => p.text).join(' '), 0);
@@ -408,6 +528,8 @@ async function createFlow() {
     pushScene('body', {
       text: p.text,
       imagePrompt: p.imagePrompt || '',
+      motionPrompt: p.motionPrompt || '',
+      negativePrompt: p.negativePrompt || '',
       theme: detectTheme(p.text + ' ' + (p.imagePrompt || ''), i),
     });
   });
@@ -426,7 +548,10 @@ async function createFlow() {
       const sc = bodyScenes[i];
       setBusy('🔊 Đang tạo giọng đọc…', `Lời bình cảnh ${i + 1}/${bodyScenes.length}…`, 0.15 + 0.4 * (i / bodyScenes.length));
       try {
-        const ab = await synthesizeVoice(sc.text, state.voice);
+        const ab = await synthesizeVoice(sc.text, state.voice, {
+          tone: state.voiceTone,
+          rate: state.voiceRate,
+        });
         sc.buffer = await decodeToBuffer(ab);
         sc.voiceKind = 'ai';
         service.audio = true;
@@ -454,7 +579,7 @@ async function createFlow() {
   }
 
   // ── Hình ảnh ──
-  let useAIImage = service.image !== false;
+  let useAIImage = state.imageMode !== 'offline' && service.image !== false;
   for (let i = 0; i < state.scenes.length; i++) {
     const sc = state.scenes[i];
     setBusy('🖼 Đang dựng hình…', `Hình nền cảnh ${i + 1}/${state.scenes.length}…`, 0.55 + 0.44 * (i / state.scenes.length));
@@ -497,6 +622,7 @@ function enterStudio() {
   ui.screenStudio.classList.remove('hidden');
   ui.projectTitle.value = state.title;
   syncVoiceUI();
+  ui.studioVoiceTone.value = state.voiceTone || 'natural';
   ui.studioMusic.checked = state.music;
   const { w, h } = RES[state.aspect];
   canvas.width = w; canvas.height = h;
@@ -515,6 +641,11 @@ function enterStudio() {
 function syncVoiceUI() {
   ui.studioVoice.value = state.voice;
   ui.inputVoice.value = state.voice;
+  if (ui.studioVoiceTone) ui.studioVoiceTone.value = state.voiceTone || 'natural';
+  if (ui.inputVoiceTone) ui.inputVoiceTone.value = state.voiceTone || 'natural';
+  if (ui.inputVoiceRate) ui.inputVoiceRate.value = String(state.voiceRate || '1');
+  if (ui.inputMotionStyle) ui.inputMotionStyle.value = state.motionStyle || 'slow-zoom';
+  if (ui.inputImageMode) ui.inputImageMode.value = state.imageMode || 'hybrid';
 }
 
 function kindLabel(sc) {
@@ -560,12 +691,24 @@ function renderSceneList() {
           <span class="m">${kindLabel(sc)}</span>
         </div>
         ${sc.type === 'body' ? `
+        <details class="prompt-details">
+          <summary>🧠 Prompt Lab <span>ảnh + chuyển động</span></summary>
+          <div class="prompt-fields">
+            <label>Prompt hình ảnh
+              <textarea class="scene-prompt" data-kind="image" rows="3" placeholder="Prompt tiếng Anh để tạo ảnh…">${escapeHtml(sc.imagePrompt || '')}</textarea>
+            </label>
+            <label>Prompt chuyển động
+              <textarea class="scene-prompt" data-kind="motion" rows="2" placeholder="Camera, hướng đi, tốc độ…">${escapeHtml(sc.motionPrompt || '')}</textarea>
+            </label>
+            <button class="tool prompt-generate" data-act="promptKit">✨ Tạo lại cả hai prompt</button>
+          </div>
+        </details>
         <div class="scene-tools">
           <button class="tool" data-act="aiImage" title="Tạo ảnh AI riêng cho cảnh này">🖼 AI</button>
           <button class="tool" data-act="libImage" title="Chọn ảnh từ thư viện">📚</button>
           <button class="tool" data-act="upload" title="Tải ảnh của bạn lên">⬆️</button>
           <button class="tool" data-act="procImage" title="Sinh ảnh trừu tượng mới">🎨</button>
-          <button class="tool" data-act="aiVoice" title="Tạo giọng đọc AI lại cho cảnh này">🔊</button>
+          <button class="tool" data-act="aiVoice" title="Tạo giọng đọc AI chân thật lại cho cảnh này">🔊</button>
           <button class="tool" data-act="micVoice" title="Thu giọng của bạn">🎙</button>
           <button class="tool" data-act="delVoice" title="Xoá giọng đọc của cảnh">🔇</button>
           <button class="tool" data-act="up" title="Đưa lên trước">↑</button>
@@ -586,6 +729,10 @@ function refreshSceneCard(sc) {
   if (meta) {
     meta.innerHTML = `<span class="m">⏱ ${sceneDurLabel(sc)}s</span> ${voiceBadge(sc)} <span class="m">${kindLabel(sc)}</span>`;
   }
+  const imagePrompt = card.querySelector('.scene-prompt[data-kind="image"]');
+  const motionPrompt = card.querySelector('.scene-prompt[data-kind="motion"]');
+  if (imagePrompt && document.activeElement !== imagePrompt) imagePrompt.value = sc.imagePrompt || '';
+  if (motionPrompt && document.activeElement !== motionPrompt) motionPrompt.value = sc.motionPrompt || '';
   updateThumb(sc);
 }
 
@@ -594,13 +741,50 @@ function refreshSceneCard(sc) {
 async function handleSceneAction(sc, act) {
   const idx = state.scenes.indexOf(sc);
   switch (act) {
+    case 'promptKit': {
+      busy('🧠 Prompt Lab…', 'Đang tối ưu prompt hình ảnh và chuyển động cho cảnh này.', 0.35);
+      try {
+        let kit;
+        try {
+          kit = await generatePromptKitViaAI(sc.text, {
+            style: state.style,
+            motionStyle: state.motionStyle,
+            creativeMode: state.creativeMode,
+          });
+          service.text = true;
+        } catch (e) {
+          kit = e.fallback || getLocalPromptKit(sc.text, {
+            style: state.style,
+            motionStyle: state.motionStyle,
+            creativeMode: state.creativeMode,
+          });
+        }
+        sc.imagePrompt = kit.imagePrompt;
+        sc.motionPrompt = kit.motionPrompt;
+        sc.negativePrompt = kit.negativePrompt;
+        hideBusy();
+        refreshSceneCard(sc);
+        saveSoon();
+        toast('🧠 Đã cập nhật prompt ảnh + prompt chuyển động cho cảnh.', 'ok', 3000);
+      } catch (e) {
+        hideBusy();
+        toast('Không tạo được prompt — hãy thử lại hoặc chỉnh prompt thủ công.', 'err');
+      }
+      break;
+    }
     case 'aiImage': {
       busy('🖼 Tạo ảnh AI…', 'Đang tạo hình nền mới cho cảnh…', 0.4);
       try {
         sc.seed = Math.floor(Math.random() * 1e9);
         if (!sc.imagePrompt) {
+          const kit = getLocalPromptKit(sc.text, {
+            style: state.style,
+            motionStyle: state.motionStyle,
+            creativeMode: state.creativeMode,
+          });
           sc.theme = sc.theme || detectTheme(sc.text, idx);
-          sc.imagePrompt = `${THEMES[sc.theme].en}, ${STYLE_SUFFIX[state.style] || ''}`;
+          sc.imagePrompt = kit.imagePrompt;
+          sc.motionPrompt = sc.motionPrompt || kit.motionPrompt;
         }
         const { w, h } = RES[state.aspect];
         const { img, url } = await generateImageForPrompt(sc.imagePrompt, sc.seed, w, h);
@@ -646,7 +830,11 @@ async function handleSceneAction(sc, act) {
     case 'aiVoice': {
       busy('🔊 Tạo giọng đọc AI…', 'Đang đọc lời bình của cảnh…', 0.5);
       try {
-        const ab = await synthesizeVoice(sc.text, state.voice === 'browser' || state.voice === 'none' ? 'alloy' : state.voice);
+        const ab = await synthesizeVoice(
+          sc.text,
+          state.voice === 'browser' || state.voice === 'none' ? 'alloy' : state.voice,
+          { tone: state.voiceTone, rate: state.voiceRate },
+        );
         sc.buffer = await decodeToBuffer(ab);
         sc.voiceKind = 'ai';
         service.audio = true;
@@ -894,12 +1082,16 @@ function saveProject() {
   try {
     const data = {
       v: 1, savedAt: Date.now(),
-      title: state.title, topic: state.topic, aspect: state.aspect, style: state.style,
+      title: state.title, topic: state.topic, brief: state.brief, aspect: state.aspect, style: state.style,
+      creativeMode: state.creativeMode, imageMode: state.imageMode, motionStyle: state.motionStyle,
+      voiceTone: state.voiceTone, voiceRate: state.voiceRate,
       transition: state.transition, voice: state.voice, music: state.music,
       musicVol: state.musicVol, watermark: state.watermark,
       titleCard: state.titleCard, endCard: state.endCard,
       scenes: state.scenes.map(sc => ({
         type: sc.type, text: sc.text, seed: sc.seed, theme: sc.theme,
+        imagePrompt: sc.imagePrompt, motionPrompt: sc.motionPrompt,
+        negativePrompt: sc.negativePrompt,
         imageKind: sc.imageKind === 'upload' ? 'library' : sc.imageKind,
         imageRef: sc.imageKind === 'ai' ? sc.imageRef : null,
       })),
@@ -911,8 +1103,14 @@ function saveProject() {
 function restoreProject(data) {
   state.title = data.title || 'Video của tôi';
   state.topic = data.topic || '';
+  state.brief = data.brief || '';
   state.aspect = RES[data.aspect] ? data.aspect : '16:9';
   state.style = data.style || 'cinematic';
+  state.creativeMode = data.creativeMode || 'storyboard';
+  state.imageMode = data.imageMode || 'hybrid';
+  state.motionStyle = data.motionStyle || 'slow-zoom';
+  state.voiceTone = data.voiceTone || 'natural';
+  state.voiceRate = String(data.voiceRate || '1');
   state.transition = data.transition || 'crossfade';
   state.voice = data.voice || 'none';
   state.music = !!data.music;
@@ -924,6 +1122,9 @@ function restoreProject(data) {
   (data.scenes || []).forEach(sc => {
     pushScene(sc.type || 'body', {
       text: sc.text || '',
+      imagePrompt: sc.imagePrompt || '',
+      motionPrompt: sc.motionPrompt || '',
+      negativePrompt: sc.negativePrompt || '',
       seed: sc.seed ?? Math.floor(Math.random() * 1e9),
       theme: sc.theme || null,
       imageKind: ['ai', 'library', 'proc', 'upload'].includes(sc.imageKind) ? sc.imageKind : 'proc',
@@ -952,6 +1153,72 @@ $$('#modeTabs .tab').forEach(t => {
       ui.inputTopic.placeholder = 'Dán toàn bộ kịch bản/lời bình vào đây, mỗi câu cách nhau bằng dấu chấm…';
     }
   });
+});
+
+// AI Director modes
+$$('#creativeModes .creative-mode').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('#creativeModes .creative-mode').forEach(x => x.classList.remove('active'));
+    btn.classList.add('active');
+    ui.modeDescription.textContent = CREATIVE_MODES[btn.dataset.creativeMode] || CREATIVE_MODES.storyboard;
+    draftPlan = null;
+    ui.planStatus.textContent = 'Đã đổi mode — hãy tạo lại đề cương để cập nhật prompt.';
+    ui.planPreview.classList.add('hidden');
+  });
+});
+
+const TEMPLATES = {
+  product: { mode: 'product', topic: 'Giới thiệu một sản phẩm mới và vì sao khách hàng nên thử ngay hôm nay', brief: 'Nêu vấn đề, lợi ích nổi bật, bằng chứng và CTA rõ ràng.', style: 'photo', motion: 'push-in' },
+  lesson: { mode: 'presentation', topic: 'Một bài học 60 giây giải thích một khái niệm khó bằng ví dụ đời thường', brief: 'Dành cho người mới; mỗi cảnh có một ý chính và ví dụ dễ nhớ.', style: 'minimal', motion: 'slow-zoom' },
+  travel: { mode: 'storyboard', topic: 'Một hành trình khám phá điểm đến đẹp ở Việt Nam trong ba ngày', brief: 'Không khí truyền cảm hứng, màu sắc điện ảnh, có nhịp mở đầu và kết thúc.', style: 'cinematic', motion: 'pan-right' },
+  report: { mode: 'presentation', topic: 'Báo cáo tuần: kết quả, điểm sáng, rủi ro và kế hoạch tuần tới', brief: 'Giọng chuyên nghiệp, rõ số liệu, phù hợp trình bày nội bộ.', style: 'render3d', motion: 'static' },
+};
+
+$$('.template-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const preset = TEMPLATES[btn.dataset.template];
+    if (!preset) return;
+    ui.inputTopic.value = preset.topic;
+    ui.inputBrief.value = preset.brief;
+    ui.inputStyle.value = preset.style;
+    ui.inputMotionStyle.value = preset.motion;
+    $$('#creativeModes .creative-mode').forEach(x => x.classList.toggle('active', x.dataset.creativeMode === preset.mode));
+    ui.modeDescription.textContent = CREATIVE_MODES[preset.mode];
+    draftPlan = null;
+    ui.planPreview.classList.add('hidden');
+    ui.planStatus.textContent = 'Template đã nạp — bấm Viết kịch bản & tạo prompt.';
+    ui.inputTopic.focus();
+  });
+});
+
+ui.inputTopic.addEventListener('input', () => {
+  draftPlan = null;
+  ui.planStatus.textContent = 'Gợi ý đã thay đổi — đề cương cũ sẽ không được dùng.';
+  ui.planPreview.classList.add('hidden');
+});
+
+ui.btnGeneratePlan.addEventListener('click', async () => {
+  const opts = collectCreateOpts();
+  if (!opts.topic.trim()) {
+    toast('Hãy nhập <b>gợi ý/chủ đề</b> trước khi chạy AI Director.', 'warn');
+    ui.inputTopic.focus();
+    return;
+  }
+  ui.btnGeneratePlan.disabled = true;
+  ui.planStatus.textContent = '⏳ AI đang viết kịch bản và thiết kế prompt…';
+  try {
+    const parts = await getPlan(opts);
+    draftPlan = { signature: planSignature(opts), parts };
+    renderPlanPreview(parts);
+    ui.planStatus.textContent = '✅ Đề cương đã sẵn sàng — bấm Tạo video để dựng các cảnh.';
+    toast('✨ AI Director đã tạo xong storyboard + prompt ảnh + prompt chuyển động.', 'ok', 4500);
+  } catch (e) {
+    console.error(e);
+    ui.planStatus.textContent = 'Không tạo được đề cương. Bạn vẫn có thể tạo video trực tiếp.';
+    toast('Không tạo được đề cương — thử lại sau.', 'err');
+  } finally {
+    ui.btnGeneratePlan.disabled = false;
+  }
 });
 
 // Số cảnh
@@ -1011,6 +1278,12 @@ ui.studioVoice.addEventListener('change', () => {
   saveSoon();
 });
 
+ui.studioVoiceTone.addEventListener('change', () => {
+  state.voiceTone = ui.studioVoiceTone.value;
+  saveSoon();
+  toast(`Phong cách đọc: <b>${VOICE_TONES[state.voiceTone] || state.voiceTone}</b>. Nhấn 🔊↻ để áp dụng cho audio đã tạo.`, 'info', 3500);
+});
+
 $('#btnRegenVoice').addEventListener('click', async () => {
   if (state.voice === 'none' || state.voice === 'browser') {
     toast('Hãy chọn một giọng AI trong ô chọn giọng đọc trước.', 'warn');
@@ -1023,7 +1296,10 @@ $('#btnRegenVoice').addEventListener('click', async () => {
   for (let i = 0; i < bodyScenes.length; i++) {
     setBusy(null, `Cảnh ${i + 1}/${bodyScenes.length}…`, 0.05 + 0.9 * (i + 1) / bodyScenes.length);
     try {
-      const ab = await synthesizeVoice(bodyScenes[i].text, state.voice);
+      const ab = await synthesizeVoice(bodyScenes[i].text, state.voice, {
+        tone: state.voiceTone,
+        rate: state.voiceRate,
+      });
       bodyScenes[i].buffer = await decodeToBuffer(ab);
       bodyScenes[i].voiceKind = 'ai';
       ok++;
@@ -1052,6 +1328,16 @@ $('#btnBackCreate').addEventListener('click', () => {
   $$('#segAspect button').forEach(b => b.classList.toggle('active', b.dataset.v === state.aspect));
   ui.inputStyle.value = state.style;
   ui.inputVoice.value = state.voice;
+  ui.inputBrief.value = state.brief || '';
+  ui.inputImageMode.value = state.imageMode || 'hybrid';
+  ui.inputMotionStyle.value = state.motionStyle || 'slow-zoom';
+  ui.inputVoiceTone.value = state.voiceTone || 'natural';
+  ui.inputVoiceRate.value = String(state.voiceRate || '1');
+  $$('#creativeModes .creative-mode').forEach(b => {
+    const active = b.dataset.creativeMode === (state.creativeMode || 'storyboard');
+    b.classList.toggle('active', active);
+    if (active) ui.modeDescription.textContent = CREATIVE_MODES[b.dataset.creativeMode];
+  });
   ui.inputTransition.value = state.transition;
   ui.inputTitleCard.checked = state.titleCard;
   ui.inputEndCard.checked = state.endCard;
@@ -1075,15 +1361,20 @@ $('#btnAddScene').addEventListener('click', async () => {
 // Danh sách cảnh — uỷ quyền sự kiện
 ui.sceneList.addEventListener('input', e => {
   const card = e.target.closest('.scene-card');
-  if (!card || !e.target.classList.contains('scene-text')) return;
+  if (!card) return;
   const sc = state.scenes.find(s => s.id === card.dataset.id);
   if (!sc || sc.type !== 'body') return;
-  sc.text = e.target.value;
-  // dựng lại timeline nhẹ (không render lại list để không mất focus)
-  tl = buildTimeline(state);
-  renderTicks();
-  updateTimeUI(); renderFrame();
-  refreshDurOnly(sc);
+  if (e.target.classList.contains('scene-text')) {
+    sc.text = e.target.value;
+    // dựng lại timeline nhẹ (không render lại list để không mất focus)
+    tl = buildTimeline(state);
+    renderTicks();
+    updateTimeUI(); renderFrame();
+    refreshDurOnly(sc);
+  } else if (e.target.classList.contains('scene-prompt')) {
+    if (e.target.dataset.kind === 'image') sc.imagePrompt = e.target.value;
+    if (e.target.dataset.kind === 'motion') sc.motionPrompt = e.target.value;
+  } else return;
   saveSoon();
 });
 
@@ -1104,7 +1395,7 @@ ui.sceneList.addEventListener('click', e => {
     handleSceneAction(sc, tool.dataset.act);
     return;
   }
-  if (e.target.closest('.scene-text')) return; // đang gõ chữ — không tua
+  if (e.target.closest('.scene-text, .scene-prompt, .prompt-details')) return; // đang chỉnh nội dung — không tua
 
   // Chọn cảnh & tua tới đầu cảnh
   selectedSceneId = sc.id;
@@ -1171,6 +1462,14 @@ $$('.overlay [data-close]').forEach(btn => {
 
 // Hướng dẫn
 $('#btnHelp').addEventListener('click', () => $('#helpModal').classList.remove('hidden'));
+
+// Danh mục nguồn mở đã khảo sát — chỉ link tham khảo, không copy code trực tiếp
+ui.sourceList.innerHTML = OPEN_SOURCE_REFERENCES.map(src => `<article class="source-item">
+  <div><b>${escapeHtml(src.name)}</b><span>${escapeHtml(src.tag)}</span></div>
+  <p>${escapeHtml(src.text)}</p>
+  <a href="${src.url}" target="_blank" rel="noopener noreferrer">Mở repository ↗</a>
+</article>`).join('');
+$('#btnSources').addEventListener('click', () => ui.sourcesModal.classList.remove('hidden'));
 
 /* ═══════════ Khởi động ═══════════ */
 

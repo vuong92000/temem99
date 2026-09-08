@@ -6,7 +6,7 @@
    • Giọng đọc → giọng trình duyệt / thu âm (local)
    ───────────────────────────────────────────── */
 
-import { withTimeout, sleep, clamp } from './util.js';
+import { withTimeout, clamp } from './util.js';
 import { THEMES, detectTheme } from './art.js';
 
 const TEXT_API = 'https://text.pollinations.ai';
@@ -28,23 +28,60 @@ export const STYLE_SUFFIX = {
   minimal: 'flat design, minimal geometric shapes, vector illustration, bold solid colors',
 };
 
+/** Các preset dùng chung cho AI Director và phần Motion Prompt. */
+export const MOTION_PRESETS = {
+  'slow-zoom': 'slow cinematic push-in, subtle parallax, gentle camera drift',
+  'pan-left': 'smooth camera pan from right to left, cinematic ease-in-out',
+  'pan-right': 'smooth camera pan from left to right, cinematic ease-in-out',
+  'push-in': 'confident dolly push-in toward the subject, shallow depth of field',
+  'parallax': 'layered 2.5D parallax, foreground moves faster than background, elegant drift',
+  'static': 'locked-off camera, minimal movement, hold the composition steady',
+};
+
+export const CREATIVE_MODE_CONTEXT = {
+  storyboard: 'storyboard kể chuyện mạch lạc, có hook và payoff',
+  presentation: 'video thuyết trình doanh nghiệp, rõ ràng, có tiêu đề và điểm chính',
+  product: 'video giới thiệu sản phẩm, nêu vấn đề, lợi ích và lời kêu gọi hành động',
+  social: 'video dọc ngắn cho mạng xã hội, nhịp nhanh, hook mạnh trong 3 giây đầu',
+  promptlab: 'bản thử nghiệm hình ảnh, ưu tiên prompt chi tiết và nhất quán thị giác',
+};
+
+export const VOICE_TONES = {
+  natural: 'giọng kể tiếng Việt chân thật, ấm áp, phát âm rõ, nhịp thở tự nhiên',
+  documentary: 'giọng thuyết minh tài liệu điềm tĩnh, có chiều sâu, nhấn nhá vừa phải',
+  energetic: 'giọng trẻ trung, năng lượng, cuốn hút như video mạng xã hội nhưng không gấp',
+  corporate: 'giọng thuyết trình chuyên nghiệp, tự tin, rõ ràng và đáng tin cậy',
+  warm: 'giọng kể gần gũi, truyền cảm, mềm mại như đang trò chuyện với khán giả',
+};
+
 /* ═══════════ 1. KỊCH BẢN ═══════════ */
 
 /**
  * Dùng AI để viết kịch bản từ một chủ đề.
  * Trả về mảng [{ text, imagePrompt }]. Ném lỗi nếu không gọi được.
  */
-export async function generateScriptViaAI(topic, { sceneCount = 5, style = 'cinematic' } = {}) {
+export async function generateScriptViaAI(topic, {
+  sceneCount = 5,
+  style = 'cinematic',
+  creativeMode = 'storyboard',
+  motionStyle = 'slow-zoom',
+  brief = '',
+} = {}) {
   const suffix = STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic;
+  const modeContext = CREATIVE_MODE_CONTEXT[creativeMode] || CREATIVE_MODE_CONTEXT.storyboard;
+  const motionContext = MOTION_PRESETS[motionStyle] || MOTION_PRESETS['slow-zoom'];
   const system = [
-    'Bạn là biên kịch video ngắn chuyên nghiệp, viết tiếng Việt tự nhiên, sống động.',
-    'Nhiệm vụ: viết kịch bản video về chủ đề do người dùng cung cấp.',
+    'Bạn là AI creative director và biên kịch video chuyên nghiệp, viết tiếng Việt tự nhiên, sống động.',
+    `Hãy tạo ${modeContext}.`,
+    'Nhiệm vụ: viết kịch bản video về chủ đề do người dùng cung cấp, đồng thời chuẩn bị prompt để tạo ảnh và chuyển động cho từng cảnh.',
     'Chỉ trả về DUY NHẤT một mảng JSON hợp lệ, không thêm bất kỳ chữ nào ngoài JSON.',
     `Mảng gồm đúng ${sceneCount} phần tử, mỗi phần tử có dạng:`,
-    '{"narration": "lời bình tiếng Việt cho cảnh này, 2-3 câu, khoảng 30-55 từ, cuốn hút như video trên mạng xã hội",',
-    `"imagePrompt": "mô tả hình ảnh BẰNG TIẾNG ANH cho cảnh này, 12-25 từ, phong cách: ${suffix}"}`,
-    'Các cảnh phải nối tiếp nhau thành một câu chuyện mạch lạc: mở đầu gây chú ý → triển khai → kết sâu sắc.',
-  ].join('\n');
+    '{"narration": "lời bình tiếng Việt cho cảnh này, 2-3 câu, khoảng 30-55 từ, cuốn hút",',
+    `"imagePrompt": "prompt tạo hình ảnh BẰNG TIẾNG ANH, 18-35 từ, mô tả chủ thể, bố cục, ánh sáng và phong cách: ${suffix}",`,
+    `"motionPrompt": "prompt chuyển động BẰNG TIẾNG ANH, 10-24 từ, mô tả camera, tốc độ, hướng di chuyển; ưu tiên: ${motionContext}"}`,
+    'Prompt ảnh không chứa chữ, logo hoặc watermark. Các cảnh phải nối tiếp nhau thành một câu chuyện mạch lạc: mở đầu gây chú ý → triển khai → kết sâu sắc.',
+    brief ? `Định hướng bổ sung của người dùng: ${brief}` : '',
+  ].filter(Boolean).join('\n');
 
   const messages = [
     { role: 'system', content: system },
@@ -112,6 +149,7 @@ function parseScenesJSON(content) {
         .map(it => ({
           text: String(it?.narration ?? it?.text ?? it?.content ?? '').trim(),
           imagePrompt: String(it?.imagePrompt ?? it?.image ?? '').trim(),
+          motionPrompt: String(it?.motionPrompt ?? it?.motion ?? '').trim(),
         }))
         .filter(s => s.text);
       if (scenes.length) return scenes;
@@ -136,9 +174,15 @@ function keywordsOf(text, n = 5) {
  * Chia văn bản có sẵn thành các cảnh (offline, không cần AI).
  * Hoặc nếu chỉ có chủ đề ngắn — dựng khung kịch bản mẫu.
  */
-export function heuristicScript(text, { sceneCount = 5, style = 'cinematic' } = {}) {
+export function heuristicScript(text, {
+  sceneCount = 5,
+  style = 'cinematic',
+  motionStyle = 'slow-zoom',
+  creativeMode = 'storyboard',
+} = {}) {
   const clean = (text || '').trim();
   const suffix = STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic;
+  const motion = MOTION_PRESETS[motionStyle] || MOTION_PRESETS['slow-zoom'];
   const sentences = clean
     .split(/(?<=[.!?…])\s+|\n+/)
     .map(s => s.trim())
@@ -184,8 +228,79 @@ export function heuristicScript(text, { sceneCount = 5, style = 'cinematic' } = 
     const theme = detectTheme(text, i);
     const kw = keywordsOf(text);
     const enBits = [THEMES[theme].en, ...kw.slice(0, 3)];
-    return { text, imagePrompt: `${enBits.join(', ')}, ${suffix}` };
+    const modeHint = CREATIVE_MODE_CONTEXT[creativeMode] || CREATIVE_MODE_CONTEXT.storyboard;
+    return {
+      text,
+      imagePrompt: `${enBits.join(', ')}, ${suffix}, ${modeHint}`,
+      motionPrompt: `${motion}, preserve subject continuity between shots`,
+    };
   });
+}
+
+/** Prompt dự phòng, dùng được ngay cả khi không có mạng. */
+export function getLocalPromptKit(text, {
+  style = 'cinematic',
+  motionStyle = 'slow-zoom',
+  creativeMode = 'storyboard',
+} = {}) {
+  const theme = detectTheme(text || '', 0);
+  const suffix = STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic;
+  const motion = MOTION_PRESETS[motionStyle] || MOTION_PRESETS['slow-zoom'];
+  const modeHint = CREATIVE_MODE_CONTEXT[creativeMode] || CREATIVE_MODE_CONTEXT.storyboard;
+  const keywords = keywordsOf(text || '', 6).join(', ');
+  return {
+    imagePrompt: `${THEMES[theme]?.en || 'cinematic scene'}, ${keywords || 'clear focal subject'}, ${modeHint}, ${suffix}, no text, no logo, no watermark`,
+    motionPrompt: `${motion}, gentle natural movement, maintain subject identity and composition`,
+    negativePrompt: 'blurry, low quality, distorted anatomy, duplicate subject, text, logo, watermark',
+  };
+}
+
+/**
+ * Tạo bộ prompt chuyên dụng cho một cảnh. Đây là lớp "Prompt Lab" độc lập:
+ * nếu text AI lỗi thì vẫn trả prompt local có cấu trúc để người dùng chỉnh sửa.
+ */
+export async function generatePromptKitViaAI(text, {
+  style = 'cinematic',
+  motionStyle = 'slow-zoom',
+  creativeMode = 'storyboard',
+} = {}) {
+  const local = getLocalPromptKit(text, { style, motionStyle, creativeMode });
+  const system = [
+    'Bạn là prompt designer cho một trình dựng video AI.',
+    'Trả về duy nhất JSON hợp lệ với 3 khóa imagePrompt, motionPrompt, negativePrompt.',
+    'imagePrompt và motionPrompt viết bằng tiếng Anh, rõ chủ thể, bố cục, ống kính, ánh sáng và chuyển động camera.',
+    `Phong cách hình ảnh: ${STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic}.`,
+    `Chuyển động ưu tiên: ${MOTION_PRESETS[motionStyle] || MOTION_PRESETS['slow-zoom']}.`,
+    `Mục tiêu video: ${CREATIVE_MODE_CONTEXT[creativeMode] || CREATIVE_MODE_CONTEXT.storyboard}.`,
+    `Prompt tham khảo offline: ${local.imagePrompt}`,
+  ].join('\n');
+  try {
+    const res = await withTimeout(fetch(`${TEXT_API}/openai?referrer=${REFERRER}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai',
+        messages: [{ role: 'system', content: system }, { role: 'user', content: `Lời bình cảnh: ${text}` }],
+        seed: Math.floor(Math.random() * 1e6),
+        referrer: REFERRER,
+      }),
+    }), 45000, 'Quá thời gian chờ Prompt Lab');
+    if (!res.ok) throw new Error(`Prompt Lab trả về ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    const raw = ct.includes('application/json') ? (await res.json())?.choices?.[0]?.message?.content : await res.text();
+    const match = String(raw || '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Prompt Lab không trả về JSON');
+    const parsed = JSON.parse(match[0]);
+    if (!parsed.imagePrompt || !parsed.motionPrompt) throw new Error('Prompt chưa đủ trường');
+    return {
+      imagePrompt: String(parsed.imagePrompt).trim(),
+      motionPrompt: String(parsed.motionPrompt).trim(),
+      negativePrompt: String(parsed.negativePrompt || local.negativePrompt).trim(),
+    };
+  } catch (error) {
+    service.text = service.text === false ? false : null;
+    throw Object.assign(error, { fallback: local });
+  }
 }
 
 /* ═══════════ 2. HÌNH ẢNH ═══════════ */
@@ -217,13 +332,17 @@ export const AI_VOICES = ['alloy', 'nova', 'shimmer', 'echo', 'onyx', 'fable'];
  * Đọc văn bản thành âm thanh (mp3 ArrayBuffer) qua dịch vụ AI online.
  * Ném lỗi nếu không dùng được.
  */
-export async function synthesizeVoice(text, voice = 'alloy') {
+export async function synthesizeVoice(text, voice = 'alloy', {
+  tone = 'natural',
+  rate = '1',
+} = {}) {
+  const toneGuide = VOICE_TONES[tone] || VOICE_TONES.natural;
   const body = {
     model: 'openai-audio',
     modalities: ['text', 'audio'],
     audio: { voice, format: 'mp3' },
     messages: [
-      { role: 'system', content: 'Bạn là giọng đọc video. Đọc to đúng văn bản được đưa, phát âm tiếng Việt rõ ràng, tự nhiên, nhịp điệu như người kể chuyện.' },
+      { role: 'system', content: `Bạn là giọng đọc video tiếng Việt chân thật. Đọc đúng văn bản, không thêm lời dẫn, không đọc ký hiệu. ${toneGuide}. Tốc độ đọc ${rate}x, ngắt câu tự nhiên, phát âm rõ tên riêng và số.` },
       { role: 'user', content: text },
     ],
     referrer: REFERRER,

@@ -112,25 +112,29 @@ export class Renderer {
     this._kb = new Map();
   }
 
-  /** Tham số Ken Burns (zoom + pan) tất định theo seed của cảnh */
-  kbFor(scene) {
-    const key = `${scene.id}:${scene.seed}`;
+  /** Tham số Ken Burns / camera preset tất định theo seed của cảnh. */
+  kbFor(scene, motionStyle = 'slow-zoom') {
+    const key = `${scene.id}:${scene.seed}:${motionStyle}`;
     let kb = this._kb.get(key);
     if (kb) return kb;
     const r = mulberry32((scene.seed || 1) >>> 0);
-    const zoomIn = r() > 0.42;
-    const s0 = 1.02 + r() * 0.04;
-    const s1 = zoomIn ? s0 + 0.07 + r() * 0.06 : Math.max(1.0, s0 - 0.05);
-    // Pan bị chặn trong giới hạn của zoom NHỎ NHẤT để ảnh luôn phủ kín canvas
-    // (tránh viền đen khi pan mạnh): |dx| ≤ (sMin − 1)/2 × W
-    const slack = (Math.min(s0, s1) - 1) / 2;
-    kb = {
-      s0, s1,
-      x0: (r() * 2 - 1) * slack,
-      x1: (r() * 2 - 1) * slack,
-      y0: (r() * 2 - 1) * slack,
-      y1: (r() * 2 - 1) * slack,
-    };
+    const randomX = () => (r() * 2 - 1);
+    const randomY = () => (r() * 2 - 1);
+    let s0 = 1.03 + r() * 0.03;
+    let s1 = 1.10 + r() * 0.05;
+    let x0 = randomX() * 0.025, x1 = randomX() * 0.025;
+    let y0 = randomY() * 0.025, y1 = randomY() * 0.025;
+
+    if (motionStyle === 'pan-left') { s0 = s1 = 1.08; x0 = 0.055; x1 = -0.055; y0 = y1 = randomY() * 0.025; }
+    if (motionStyle === 'pan-right') { s0 = s1 = 1.08; x0 = -0.055; x1 = 0.055; y0 = y1 = randomY() * 0.025; }
+    if (motionStyle === 'push-in') { s0 = 1.01; s1 = 1.19; x0 = x1 = randomX() * 0.018; y0 = y1 = randomY() * 0.018; }
+    if (motionStyle === 'parallax') { s0 = 1.08; s1 = 1.15; x0 = -0.045; x1 = 0.045; y0 = 0.035; y1 = -0.025; }
+    if (motionStyle === 'static') { s0 = s1 = 1.015; x0 = x1 = y0 = y1 = 0; }
+
+    // Pan bị chặn trong giới hạn của zoom nhỏ nhất để ảnh luôn phủ kín canvas.
+    const slack = Math.max(0, (Math.min(s0, s1) - 1) / 2);
+    const fit = v => clamp(v, -slack, slack);
+    kb = { s0, s1, x0: fit(x0), x1: fit(x1), y0: fit(y0), y1: fit(y1) };
     this._kb.set(key, kb);
     return kb;
   }
@@ -176,7 +180,7 @@ export class Renderer {
     ctx.globalAlpha = clamp(alpha, 0, 1);
 
     // ── Ảnh nền + Ken Burns ──
-    const kb = this.kbFor(it.scene);
+    const kb = this.kbFor(it.scene, project.motionStyle || 'slow-zoom');
     const p = clamp(localT / it.dur, 0, 1);
     const e = easeInOutSine(p);
     const s = lerp(kb.s0, kb.s1, e);

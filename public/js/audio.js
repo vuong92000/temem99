@@ -55,14 +55,14 @@ export class BrowserTTS {
   }
 
   /** Đọc 1 đoạn — trả về Promise kết thúc khi đọc xong */
-  speak(text) {
+  speak(text, { rate = 1, pitch = 1 } = {}) {
     return new Promise(resolve => {
       if (!this.supported || !text) return resolve(false);
       try { speechSynthesis.cancel(); } catch { /* noop */ }
       const u = new SpeechSynthesisUtterance(text);
       if (this.voice) u.voice = this.voice;
       u.lang = this.voice ? this.voice.lang : 'vi-VN';
-      u.rate = 1; u.pitch = 1; u.volume = 1;
+      u.rate = Number(rate) || 1; u.pitch = Number(pitch) || 1; u.volume = 1;
       u.onend = () => resolve(true);
       u.onerror = () => resolve(false);
       this._current = u;

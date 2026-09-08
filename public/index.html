@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ai-director.css">
 </head>
 <body>
 
@@ -23,6 +24,7 @@
     </div>
     <div class="topbar-actions">
       <span id="serviceChip" class="chip" title="Trạng thái các dịch vụ AI online">⏳ Đang kiểm tra AI…</span>
+      <button id="btnSources" class="btn ghost">🧩 Nguồn mở</button>
       <button id="btnHelp" class="btn ghost">❓ Hướng dẫn</button>
     </div>
   </header>
@@ -51,6 +53,79 @@
           <div class="tabs" id="modeTabs">
             <button class="tab active" data-mode="ai">✨ AI viết kịch bản</button>
             <button class="tab" data-mode="manual">📝 Dán kịch bản có sẵn</button>
+          </div>
+
+          <div class="director-panel">
+            <div class="director-head">
+              <div>
+                <b>🎞 AI Director</b>
+                <small>Storyboard kiểu Google Vids: ý tưởng → kịch bản → prompt ảnh → prompt chuyển động</small>
+              </div>
+              <span class="director-pill">⚡ Prompt Lab</span>
+            </div>
+            <div class="creative-modes" id="creativeModes">
+              <button type="button" class="creative-mode active" data-creative-mode="storyboard">🎬 Storyboard</button>
+              <button type="button" class="creative-mode" data-creative-mode="presentation">📊 Thuyết trình</button>
+              <button type="button" class="creative-mode" data-creative-mode="product">🛍 Sản phẩm</button>
+              <button type="button" class="creative-mode" data-creative-mode="social">📱 Social reel</button>
+              <button type="button" class="creative-mode" data-creative-mode="promptlab">🧪 Prompt Lab</button>
+            </div>
+            <p id="modeDescription" class="mode-description">Tạo storyboard có hook, diễn biến và kết luận; mỗi cảnh có prompt ảnh và prompt camera.</p>
+            <div class="template-strip">
+              <span>Template nhanh:</span>
+              <button type="button" class="template-chip" data-template="product">🛍 Ra mắt sản phẩm</button>
+              <button type="button" class="template-chip" data-template="lesson">📚 Bài học 60 giây</button>
+              <button type="button" class="template-chip" data-template="travel">🗺 Travel story</button>
+              <button type="button" class="template-chip" data-template="report">📊 Báo cáo tuần</button>
+            </div>
+            <div class="director-fields">
+              <label class="field">
+                <span>Gợi ý đạo diễn <em>(không bắt buộc)</em></span>
+                <input id="inputBrief" type="text" placeholder="Ví dụ: dành cho người mới, giọng tin cậy, hình ảnh nhất quán màu xanh…">
+              </label>
+              <label class="field">
+                <span>Chế độ hình ảnh AI</span>
+                <select id="inputImageMode">
+                  <option value="hybrid">⚡ Hybrid — AI trước, thư viện khi lỗi</option>
+                  <option value="online">🖼 AI từng cảnh — ưu tiên Pollinations</option>
+                  <option value="offline">📚 Offline — thư viện & ảnh procedural</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Ngôn ngữ chuyển động</span>
+                <select id="inputMotionStyle">
+                  <option value="slow-zoom">🎥 Slow zoom — điện ảnh</option>
+                  <option value="pan-left">⬅ Pan trái</option>
+                  <option value="pan-right">➡ Pan phải</option>
+                  <option value="push-in">🔎 Push-in — nhấn chủ thể</option>
+                  <option value="parallax">🪄 Parallax — chiều sâu 2.5D</option>
+                  <option value="static">⏸ Static — giữ bố cục</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Giọng đọc chân thật</span>
+                <select id="inputVoiceTone">
+                  <option value="natural">🎙 Tự nhiên — ấm và rõ</option>
+                  <option value="documentary">🎧 Tài liệu — điềm tĩnh</option>
+                  <option value="energetic">⚡ Năng lượng — social</option>
+                  <option value="corporate">💼 Chuyên nghiệp — thuyết trình</option>
+                  <option value="warm">💛 Gần gũi — truyền cảm</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Tốc độ đọc</span>
+                <select id="inputVoiceRate">
+                  <option value="0.9">0.9× · chậm, dễ nghe</option>
+                  <option value="1" selected>1× · tự nhiên</option>
+                  <option value="1.1">1.1× · gọn, hiện đại</option>
+                </select>
+              </label>
+            </div>
+            <div class="director-actions">
+              <button id="btnGeneratePlan" type="button" class="btn">✨ Viết kịch bản &amp; tạo prompt</button>
+              <span id="planStatus" class="plan-status">Chưa có đề cương — bạn có thể tạo trực tiếp.</span>
+            </div>
+            <div id="planPreview" class="plan-preview hidden"></div>
           </div>
 
           <label class="field">
@@ -147,17 +222,24 @@
           <div class="stage-top">
             <input id="projectTitle" class="title-input" placeholder="Tên video" maxlength="80">
             <div class="stage-actions">
-              <select id="studioVoice" title="Giọng đọc">
-                <option value="alloy">🟢 Alloy</option>
-                <option value="nova">🟣 Nova</option>
-                <option value="shimmer">✨ Shimmer</option>
-                <option value="echo">🔵 Echo</option>
-                <option value="onyx">⚫ Onyx</option>
-                <option value="fable">📜 Fable</option>
+              <select id="studioVoice" title="Giọng đọc AI chân thật">
+                <option value="alloy">🟢 Alloy · tự nhiên</option>
+                <option value="nova">🟣 Nova · trong trẻo</option>
+                <option value="shimmer">✨ Shimmer · dịu</option>
+                <option value="echo">🔵 Echo · nam trầm</option>
+                <option value="onyx">⚫ Onyx · sâu</option>
+                <option value="fable">📜 Fable · kể chuyện</option>
                 <option value="browser">🖥️ Trình duyệt</option>
                 <option value="none">🔇 Không</option>
               </select>
-              <button id="btnRegenVoice" class="btn small" title="Tạo lại giọng đọc AI cho tất cả các cảnh">🔊↻</button>
+              <select id="studioVoiceTone" title="Phong cách đọc">
+                <option value="natural">🎙 Tự nhiên</option>
+                <option value="documentary">🎧 Tài liệu</option>
+                <option value="energetic">⚡ Năng lượng</option>
+                <option value="corporate">💼 Chuyên nghiệp</option>
+                <option value="warm">💛 Gần gũi</option>
+              </select>
+              <button id="btnRegenVoice" class="btn small" title="Tạo lại giọng đọc AI chân thật cho tất cả các cảnh">🔊↻</button>
               <label class="switch music-toggle" title="Nhạc nền"><input type="checkbox" id="studioMusic"><i>🎵</i></label>
               <button id="btnExport" class="btn primary">⬇ Xuất video</button>
             </div>
@@ -271,6 +353,18 @@
           <li>Nhấn <b>⬇ Xuất video</b> → video định dạng <b>WebM</b> sẽ được tải về (mở bằng Chrome/Edge, hoặc chuyển sang MP4 bằng công cụ chuyển đổi nếu cần).</li>
         </ol>
         <p class="hint">Dự án được tự động lưu vào trình duyệt (trừ giọng đọc & ảnh tải lên) — lần sau vào lại sẽ có nút Khôi phục.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL NGUỒN MỞ ══════════ -->
+  <div id="sourcesModal" class="overlay hidden">
+    <div class="modal sources-modal">
+      <div class="modal-head"><h3>🧩 Cảm hứng &amp; tích hợp nguồn mở</h3><button class="btn icon" data-close>✕</button></div>
+      <div class="modal-body">
+        <p class="hint">VideoAI Studio không sao chép mã nguồn của các dự án bên dưới. Các ý tưởng được chuyển thành module độc lập, zero-dependency, phù hợp với app chạy trực tiếp trong trình duyệt.</p>
+        <div id="sourceList" class="source-list"></div>
+        <p class="hint">Đã tích hợp trong bản này: AI Director storyboard, Prompt Lab cho ảnh/chuyển động, scene cards chỉnh sửa được, preset camera, voice profile chân thật và export WebM.</p>
       </div>
     </div>
   </div>

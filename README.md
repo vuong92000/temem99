@@ -17,6 +17,8 @@
 
 ## 🚀 Chạy ứng dụng
 
+> 📖 **Hướng dẫn chi tiết từng bước (cài đặt, sử dụng, xử lý sự cố): xem [HUONG-DAN-CHAY.md](HUONG-DAN-CHAY.md)**
+
 ```bash
 node server.js        # hoặc: npm start
 ```

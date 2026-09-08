@@ -11,7 +11,7 @@
 | 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
 | 🪄 **Ảnh tham chiếu** | Tạo keyframe/reference image riêng bằng prompt cho từng cảnh, dùng làm frame đầu khi gọi Veo. |
-| 🎬 **Google Veo** | Gọi Veo 3.1/3.1 Fast/Lite qua Gemini REST API, poll tác vụ dài, xem/tải MP4 và gắn clip vào scene để preview/export. |
+| 🎬 **Google Veo** | Nút tạo kịch bản + mở workflow **Veo 3.1 Lite · lower priority**, cùng Veo 3.1/3.1 Fast cho từng cảnh qua Gemini REST API; poll tác vụ dài, xem/tải MP4 và gắn clip vào scene để preview/export. |
 | 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API, VietTTS/Kokoro/Piper local hoặc **thu âm giọng của chính bạn**. |
 | 🎵 **Nhạc nền tự sinh** | Nhạc ambient (đệm hợp âm + reverb) sinh bằng Web Audio — không cần file nhạc, trộn thẳng vào video xuất ra. |
 | 🎥 **Hiệu ứng điện ảnh** | Ken Burns (zoom/pan chậm), 3 kiểu chuyển cảnh, phụ đề tự chia câu động, màn mở đầu/kết thúc, watermark. |

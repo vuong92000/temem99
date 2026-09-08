@@ -215,8 +215,9 @@
           </div>
 
           <button id="btnCreate" class="btn primary xl">🚀 Tạo video</button>
-          <p class="hint">💡 Cần internet để dùng <b>ảnh AI</b> và <b>giọng đọc AI</b> (dịch vụ miễn phí của Pollinations.ai).
-             Mất mạng vẫn tạo được video với thư viện ảnh AI sẵn có, giọng đọc trình duyệt và nhạc nền tự sinh.</p>
+          <button id="btnCreateVeoLite" type="button" class="btn veo-launch xl">🎬 Tạo kịch bản &amp; video bằng Veo 3.1 Lite <span>Low priority</span></button>
+          <p class="hint">💡 Nút Veo sẽ viết kịch bản bằng AI Director rồi mở trình tạo clip Veo 3.1 Lite cho cảnh đầu tiên. Bạn cần Gemini API key và có thể tiếp tục tạo clip cho các cảnh khác trong Studio.
+             Mất mạng vẫn tạo được video cơ bản với thư viện ảnh, giọng đọc trình duyệt và nhạc nền tự sinh.</p>
         </div>
       </div>
     </section>
@@ -387,7 +388,7 @@
     <div class="modal veo-modal">
       <div class="modal-head"><h3>🎬 Tạo video bằng Google Veo</h3><button class="btn icon" data-close>✕</button></div>
       <div class="modal-body">
-        <div class="veo-callout"><b>Google Veo 3.1</b><span>Tạo clip 4–8 giây từ prompt và ảnh tham chiếu, có thể có audio native.</span></div>
+        <div class="veo-callout"><b>Google Veo 3.1</b><span>Tạo clip 4–8 giây từ prompt và ảnh tham chiếu, có thể có audio native. Veo 3.1 Lite phù hợp tác vụ lower priority/tiết kiệm.</span></div>
         <label class="field">
           <span>Gemini API key <em>(chỉ dùng trong phiên này)</em></span>
           <input id="veoApiKey" type="password" autocomplete="off" placeholder="AIza…">
@@ -398,7 +399,7 @@
             <select id="veoModel">
               <option value="veo-3.1-generate-preview">Veo 3.1 · quality + audio</option>
               <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast · thử nhanh</option>
-              <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite · tiết kiệm</option>
+              <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite · tiết kiệm · lower priority</option>
             </select>
           </label>
           <label class="field"><span>Tỉ lệ</span>

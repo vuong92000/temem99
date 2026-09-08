@@ -112,7 +112,7 @@ Kiểm thử proxy mà không cần cài model TTS: `npm run test:tts` (mock end
 
 ## 5. Tạo clip bằng Google Veo 3.1 Lite (tuỳ chọn)
 
-Trong Studio, chọn một cảnh rồi bấm **🎬 Veo**. Bạn có thể nhập Gemini API key, prompt chuyển động, ảnh tham chiếu, tỉ lệ, thời lượng và độ phân giải. Clip MP4 tạo xong sẽ được gắn vào cảnh và có nút tải về.
+Ở màn hình tạo mới, bấm **🎬 Tạo kịch bản & video bằng Veo 3.1 Lite (Low priority)** để AI Director dựng kịch bản rồi mở workflow Veo cho cảnh đầu tiên. Trong Studio, chọn một cảnh rồi bấm **🎬 Veo** để tạo clip riêng cho cảnh đó. Bạn có thể nhập Gemini API key, prompt chuyển động, ảnh tham chiếu, tỉ lệ, thời lượng và độ phân giải. Clip MP4 tạo xong sẽ được gắn vào cảnh và có nút tải về.
 
 Nếu muốn chạy server-side bằng đoạn helper Python tương ứng với SDK Google:
 

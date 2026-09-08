@@ -151,7 +151,7 @@ const ui = {
   inputEndCard: $('#inputEndCard'),
   inputMusic: $('#inputMusic'),
   inputWatermark: $('#inputWatermark'),
-  btnCreate: $('#btnCreate'),
+  btnCreate: $('#btnCreate'), btnCreateVeoLite: $('#btnCreateVeoLite'),
   sampleChips: $('#sampleChips'),
   restoreBanner: $('#restoreBanner'),
   sceneList: $('#sceneList'),
@@ -571,7 +571,7 @@ function deriveTitle(topic, parts) {
   return t.length > 70 ? t.slice(0, 67) + '…' : t;
 }
 
-async function createFlow() {
+async function createFlow({ openVeoLite = false } = {}) {
   const opts = collectCreateOpts();
   if (!opts.topic.trim()) {
     toast('Vui lòng nhập <b>chủ đề</b> hoặc dán <b>kịch bản</b> trước nhé!', 'warn');
@@ -694,7 +694,16 @@ async function createFlow() {
   playhead = 0;
   enterStudio();
   saveProject();
-  toast('✨ Video đã sẵn sàng! Nhấn <b>▶</b> để xem trước, chỉnh cảnh ở bảng bên trái.', 'ok', 6000);
+  toast(
+    openVeoLite
+      ? '🎬 Kịch bản đã sẵn sàng — đang mở Veo 3.1 Lite để tạo clip cảnh đầu tiên.'
+      : '✨ Video đã sẵn sàng! Nhấn <b>▶</b> để xem trước, chỉnh cảnh ở bảng bên trái.',
+    'ok', 6000,
+  );
+  if (openVeoLite) {
+    const firstBody = state.scenes.find(s => s.type === 'body');
+    if (firstBody) setTimeout(() => openVeoModal(firstBody, { model: 'veo-3.1-lite-generate-preview' }), 120);
+  }
 }
 
 /* ═══════════ Studio ═══════════ */
@@ -1154,7 +1163,7 @@ function currentBodyScene() {
   return active?.type === 'body' ? active : state.scenes.find(s => s.type === 'body') || null;
 }
 
-function openVeoModal(sc) {
+function openVeoModal(sc, { model = 'veo-3.1-generate-preview' } = {}) {
   if (!sc) {
     toast('Hãy chọn một cảnh nội dung trước khi tạo video Veo.', 'warn');
     return;
@@ -1162,7 +1171,7 @@ function openVeoModal(sc) {
   veoTargetScene = sc;
   const savedKey = sessionStorage.getItem('videoai-veo-key') || '';
   ui.veoApiKey.value = savedKey;
-  ui.veoModel.value = 'veo-3.1-generate-preview';
+  ui.veoModel.value = model;
   ui.veoAspect.value = state.aspect === '9:16' ? '9:16' : '16:9';
   ui.veoDuration.value = '8';
   ui.veoResolution.value = '720p';
@@ -1520,7 +1529,8 @@ SAMPLES.forEach(s => {
   ui.sampleChips.appendChild(chip);
 });
 
-ui.btnCreate.addEventListener('click', createFlow);
+ui.btnCreate.addEventListener('click', () => createFlow());
+ui.btnCreateVeoLite.addEventListener('click', () => createFlow({ openVeoLite: true }));
 
 // Nút khôi phục
 $('#btnRestore').addEventListener('click', () => {

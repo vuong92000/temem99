@@ -8,7 +8,7 @@
 
 | Thành phần | Yêu cầu | Ghi chú |
 |---|---|---|
-| **Node.js** | ≥ 16 | [tải tại nodejs.org](https://nodejs.org) — kiểm tra bằng `node -v` |
+| **Node.js** | ≥ 18 | [tải tại nodejs.org](https://nodejs.org) — kiểm tra bằng `node -v`; cần cho proxy TTS local |
 | **Trình duyệt** | Chrome / Edge / Safari bản mới | Cần hỗ trợ Canvas, Web Audio, MediaRecorder (đều có sẵn) |
 | **Internet** | Không bắt buộc | Có mạng: dùng AI online (kịch bản, ảnh, giọng đọc). Mất mạng: app **tự chuyển sang chế độ dự phòng offline** |
 
@@ -91,7 +91,26 @@ Mọi thay đổi được **tự lưu vào localStorage** — quay lại tab sa
 
 ---
 
-## 4. Tạo clip bằng Google Veo 3.1 Lite (tuỳ chọn)
+## 4. Thư viện giọng đọc miễn phí (tuỳ chọn)
+
+Ứng dụng vẫn có giọng trình duyệt không cần cài đặt. Nếu muốn giọng tiếng Việt/local chất lượng tốt hơn, có thể dùng các adapter **VietTTS**, **Kokoro/Kokoro-ONNX** hoặc **Piper** qua server proxy `/api/tts`.
+
+Cấu hình endpoint OpenAI-compatible của thư viện bạn đã cài rồi khởi động lại server:
+
+```bash
+# Ví dụ VietTTS chạy tại cổng 8298
+export VIETTTS_URL="http://127.0.0.1:8298/v1/audio/speech"
+# Hoặc chọn một endpoint khác:
+# export KOKORO_TTS_URL="http://127.0.0.1:7860/v1/audio/speech"
+# export PIPER_TTS_URL="http://127.0.0.1:5000/v1/audio/speech"
+npm start
+```
+
+Sau đó chọn `🇻🇳 VietTTS`, `🟣 Kokoro` hoặc `🪶 Piper` trong ô **Giọng đọc lời bình** và bấm `🔊↻`. Các dự án/weights có license riêng; kiểm tra license model và voice trước khi phát hành thương mại. VietTTS source/API được tham khảo từ [dangvansam/viet-tts](https://github.com/dangvansam/viet-tts), Kokoro ONNX từ [thewh1teagle/kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx).
+
+Kiểm thử proxy mà không cần cài model TTS: `npm run test:tts` (mock endpoint success/error và endpoint chưa cấu hình).
+
+## 5. Tạo clip bằng Google Veo 3.1 Lite (tuỳ chọn)
 
 Trong Studio, chọn một cảnh rồi bấm **🎬 Veo**. Bạn có thể nhập Gemini API key, prompt chuyển động, ảnh tham chiếu, tỉ lệ, thời lượng và độ phân giải. Clip MP4 tạo xong sẽ được gắn vào cảnh và có nút tải về.
 
@@ -110,7 +129,7 @@ python scripts/veo3_lite_generate.py \
 
 Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HTML hoặc tin nhắn công khai.
 
-## 5. Xử lý sự cố thường gặp
+## 6. Xử lý sự cố thường gặp
 
 | Triệu chứng | Nguyên nhân & cách xử lý |
 |---|---|
@@ -123,7 +142,7 @@ Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HT
 
 ---
 
-## 6. Kiểm tra tự động (tuỳ chọn)
+## 7. Kiểm tra tự động (tuỳ chọn)
 
 Repo kèm kịch bản smoke-test mô phỏng cả luồng online lẫn offline:
 
@@ -135,7 +154,7 @@ Kết quả mong đợi: `24 pass, 0 fail, 0 lỗi runtime`.
 
 ---
 
-## 7. Cấu trúc thư mục
+## 8. Cấu trúc thư mục
 
 ```
 temem99/
@@ -155,13 +174,15 @@ temem99/
     │   ├── audio.js     AudioContext, Web Speech, nhạc nền Web Audio
     │   ├── renderer.js  Timeline + vẽ từng khung hình (Ken Burns, phụ đề…)
     │   ├── exporter.js  Trộn âm offline + MediaRecorder xuất video
+    │   ├── veo.js       Adapter Gemini REST API / Google Veo
+    │   ├── local-tts.js Adapter VietTTS/Kokoro/Piper qua /api/tts
     │   └── util.js      Tiện ích (PRNG, toast, timeout…)
     └── library/         9 ảnh nền AI dự phòng (chạy offline vẫn có ảnh)
 ```
 
 ---
 
-## 8. Câu hỏi thường gặp
+## 9. Câu hỏi thường gặp
 
 **❓ Có cần API key hay trả phí không?**
 Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần key) và luôn có phương án dự phòng offline.

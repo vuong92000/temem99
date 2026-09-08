@@ -38,6 +38,73 @@ function send(res, status, body, headers = {}) {
   res.end(body);
 }
 
+function readJson(req, maxBytes = 1_000_000) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    let raw = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => {
+      size += Buffer.byteLength(chunk);
+      if (size > maxBytes) {
+        reject(new Error('Request quá lớn'));
+        req.destroy();
+        return;
+      }
+      raw += chunk;
+    });
+    req.on('end', () => {
+      try { resolve(JSON.parse(raw || '{}')); }
+      catch { reject(new Error('JSON không hợp lệ')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+async function proxyLocalTTS(req, res) {
+  if (req.method !== 'POST') {
+    return send(res, 405, JSON.stringify({ error: 'Method Not Allowed' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+  try {
+    const body = await readJson(req);
+    const provider = String(body.provider || 'viettts').toLowerCase();
+    const endpoints = {
+      viettts: process.env.VIETTTS_URL || '',
+      kokoro: process.env.KOKORO_TTS_URL || '',
+      piper: process.env.PIPER_TTS_URL || '',
+    };
+    const target = endpoints[provider];
+    const envName = { viettts: 'VIETTTS_URL', kokoro: 'KOKORO_TTS_URL', piper: 'PIPER_TTS_URL' }[provider];
+    if (!target) {
+      return send(res, 503, JSON.stringify({
+        error: envName
+          ? `Chưa cấu hình endpoint cho ${provider}. Đặt ${envName} rồi khởi động lại server.`
+          : `Provider TTS không được hỗ trợ: ${provider}`,
+      }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+    const upstream = await fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'audio/wav, audio/mpeg, audio/*' },
+      body: JSON.stringify({
+        model: body.model || 'tts-1',
+        input: String(body.input || ''),
+        voice: body.voice || 'default',
+        speed: Number(body.speed) || 1,
+        response_format: body.response_format || 'wav',
+      }),
+    });
+    const data = await upstream.arrayBuffer();
+    res.writeHead(upstream.status, {
+      'Content-Type': upstream.headers.get('content-type') || 'audio/wav',
+      'Cache-Control': 'no-store',
+    });
+    return res.end(Buffer.from(data));
+  } catch (err) {
+    return send(res, 502, JSON.stringify({ error: err.message || 'Local TTS proxy error' }), {
+      'Content-Type': 'application/json; charset=utf-8',
+    });
+  }
+}
+
 function serveStatic(req, res) {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
   if (urlPath === '/') urlPath = '/index.html';
@@ -72,6 +139,9 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json; charset=utf-8',
       });
     }
+    if (req.url.startsWith('/api/tts')) {
+      return proxyLocalTTS(req, res);
+    }
     return send(res, 404, JSON.stringify({ error: 'Unknown API' }), {
       'Content-Type': 'application/json; charset=utf-8',
     });
@@ -80,6 +150,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`✨ VideoAI Studio đang chạy tại:  http://localhost:${PORT}`);
+  const actualPort = server.address().port;
+  console.log(`✨ VideoAI Studio đang chạy tại:  http://localhost:${actualPort}`);
   console.log(`   Thư mục tĩnh: ${PUBLIC}`);
 });

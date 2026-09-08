@@ -10,6 +10,7 @@ import {
   checkTextService, checkImageService, STYLE_SUFFIX, MOTION_PRESETS, VOICE_TONES, FILM_GENRES,
 } from './ai.js';
 import { getAudioContext, decodeToBuffer, BrowserTTS, scheduleMusic } from './audio.js';
+import { isLocalVoice, synthesizeLocalVoice } from './local-tts.js';
 import { Renderer, buildTimeline } from './renderer.js';
 import { exportVideo, extForMime } from './exporter.js';
 import { generateVeoVideo, veoModelLabel } from './veo.js';
@@ -98,6 +99,24 @@ const OPEN_SOURCE_REFERENCES = [
     url: 'https://github.com/itsPremkumar/Automated-Video-Generator',
     tag: 'agentic pipeline',
     text: 'Tham khảo pipeline topic → script → voice → visuals → render và ý tưởng prompt director.',
+  },
+  {
+    name: 'VietTTS',
+    url: 'https://github.com/dangvansam/viet-tts',
+    tag: 'Vietnamese TTS · Apache source',
+    text: 'Adapter local qua /api/tts cho giọng Việt; model/audio có điều khoản riêng, cần kiểm tra trước khi dùng thương mại.',
+  },
+  {
+    name: 'Kokoro / kokoro-onnx',
+    url: 'https://github.com/thewh1teagle/kokoro-onnx',
+    tag: 'lightweight local TTS',
+    text: 'Adapter local CPU/ONNX với nhiều giọng; mã adapter và model có license riêng, đọc kỹ trước khi phân phối.',
+  },
+  {
+    name: 'Piper TTS',
+    url: 'https://github.com/OHF-Voice/piper1-gpl',
+    tag: 'CPU / edge TTS',
+    text: 'Adapter endpoint local cho Piper; phù hợp máy yếu và chạy offline khi đã tải voice model.',
   },
 ];
 
@@ -609,12 +628,14 @@ async function createFlow() {
       const sc = bodyScenes[i];
       setBusy('🔊 Đang tạo giọng đọc…', `Lời bình cảnh ${i + 1}/${bodyScenes.length}…`, 0.15 + 0.4 * (i / bodyScenes.length));
       try {
-        const ab = await synthesizeVoice(sc.text, state.voice, {
-          tone: state.voiceTone,
-          rate: state.voiceRate,
-        });
+        const ab = isLocalVoice(state.voice)
+          ? await synthesizeLocalVoice(sc.text, state.voice, { rate: state.voiceRate })
+          : await synthesizeVoice(sc.text, state.voice, {
+            tone: state.voiceTone,
+            rate: state.voiceRate,
+          });
         sc.buffer = await decodeToBuffer(ab);
-        sc.voiceKind = 'ai';
+        sc.voiceKind = isLocalVoice(state.voice) ? 'local' : 'ai';
         service.audio = true;
         updateServiceChip();
       } catch (e) {
@@ -733,6 +754,7 @@ function videoBadge(sc) {
 }
 
 function voiceBadge(sc) {
+  if (sc.voiceKind === 'local') return '<span class="m voice">🔊 Local TTS</span>';
   if (sc.voiceKind === 'ai') return '<span class="m voice">🔊 AI</span>';
   if (sc.voiceKind === 'mic') return '<span class="m mic">🎙 Thu âm</span>';
   if (sc.buffer) return '<span class="m voice">🔊</span>';
@@ -947,13 +969,15 @@ async function handleSceneAction(sc, act) {
     case 'aiVoice': {
       busy('🔊 Tạo giọng đọc AI…', 'Đang đọc lời bình của cảnh…', 0.5);
       try {
-        const ab = await synthesizeVoice(
-          sc.text,
-          state.voice === 'browser' || state.voice === 'none' ? 'alloy' : state.voice,
-          { tone: state.voiceTone, rate: state.voiceRate },
-        );
+        const ab = isLocalVoice(state.voice)
+          ? await synthesizeLocalVoice(sc.text, state.voice, { rate: state.voiceRate })
+          : await synthesizeVoice(
+            sc.text,
+            state.voice === 'browser' || state.voice === 'none' ? 'alloy' : state.voice,
+            { tone: state.voiceTone, rate: state.voiceRate },
+          );
         sc.buffer = await decodeToBuffer(ab);
-        sc.voiceKind = 'ai';
+        sc.voiceKind = isLocalVoice(state.voice) ? 'local' : 'ai';
         service.audio = true;
         hideBusy();
         rebuild(); refreshSceneCard(sc);
@@ -1524,7 +1548,9 @@ ui.projectTitle.addEventListener('input', () => {
 ui.studioVoice.addEventListener('change', () => {
   state.voice = ui.studioVoice.value;
   syncVoiceUI();
-  if (state.voice !== 'none' && state.voice !== 'browser' && !state.scenes.some(s => s.voiceKind === 'ai')) {
+  if (isLocalVoice(state.voice)) {
+    toast('Đã chọn giọng local miễn phí — nhấn <b>🔊↻</b> để tạo audio. Cần cấu hình endpoint TTS trên server.', 'info', 5500);
+  } else if (state.voice !== 'none' && state.voice !== 'browser' && !state.scenes.some(s => s.voiceKind === 'ai')) {
     toast('Đã chọn giọng AI — nhấn <b>🔊↻</b> để tạo giọng đọc cho các cảnh.', 'info', 5000);
   }
   saveSoon();
@@ -1548,12 +1574,14 @@ $('#btnRegenVoice').addEventListener('click', async () => {
   for (let i = 0; i < bodyScenes.length; i++) {
     setBusy(null, `Cảnh ${i + 1}/${bodyScenes.length}…`, 0.05 + 0.9 * (i + 1) / bodyScenes.length);
     try {
-      const ab = await synthesizeVoice(bodyScenes[i].text, state.voice, {
-        tone: state.voiceTone,
-        rate: state.voiceRate,
-      });
+      const ab = isLocalVoice(state.voice)
+        ? await synthesizeLocalVoice(bodyScenes[i].text, state.voice, { rate: state.voiceRate })
+        : await synthesizeVoice(bodyScenes[i].text, state.voice, {
+          tone: state.voiceTone,
+          rate: state.voiceRate,
+        });
       bodyScenes[i].buffer = await decodeToBuffer(ab);
-      bodyScenes[i].voiceKind = 'ai';
+      bodyScenes[i].voiceKind = isLocalVoice(state.voice) ? 'local' : 'ai';
       ok++;
     } catch { /* cảnh lỗi thì bỏ qua */ }
   }

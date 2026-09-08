@@ -12,7 +12,7 @@
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
 | 🪄 **Ảnh tham chiếu** | Tạo keyframe/reference image riêng bằng prompt cho từng cảnh, dùng làm frame đầu khi gọi Veo. |
 | 🎬 **Google Veo** | Gọi Veo 3.1/3.1 Fast/Lite qua Gemini REST API, poll tác vụ dài, xem/tải MP4 và gắn clip vào scene để preview/export. |
-| 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API hoặc **thu âm giọng của chính bạn**. |
+| 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API, VietTTS/Kokoro/Piper local hoặc **thu âm giọng của chính bạn**. |
 | 🎵 **Nhạc nền tự sinh** | Nhạc ambient (đệm hợp âm + reverb) sinh bằng Web Audio — không cần file nhạc, trộn thẳng vào video xuất ra. |
 | 🎥 **Hiệu ứng điện ảnh** | Ken Burns (zoom/pan chậm), 3 kiểu chuyển cảnh, phụ đề tự chia câu động, màn mở đầu/kết thúc, watermark. |
 | 📐 **3 tỉ lệ khung hình** | 16:9 (YouTube) · 9:16 (TikTok/Reels) · 1:1 (bài đăng). |
@@ -46,6 +46,7 @@ public/
     main.js          Bộ điều phối: state, luồng tạo video, UI, phát/xem trước
     ai.js            Gọi Pollinations.ai (kịch bản / ảnh / giọng đọc) + fallback
     veo.js           Adapter Gemini REST API / Google Veo 3.1, poll operation + MP4
+    local-tts.js     Adapter VietTTS / Kokoro / Piper qua server proxy
     art.js           Nhận diện chủ đề, ảnh thủ tục (procedural art), thư viện ảnh
     audio.js         AudioContext, Web Speech API, nhạc nền Web Audio
     renderer.js      Timeline + vẽ từng khung hình (Ken Burns, phụ đề, chuyển cảnh)

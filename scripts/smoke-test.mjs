@@ -149,6 +149,9 @@ function makeDom(mode) {
   w.fetch = async (url, opts = {}) => {
     const u = String(url);
     if (mode === 'offline') throw new TypeError('simulated offline fetch');
+    if (u.includes('/api/tts')) {
+      return new FakeResponse('fake-local-wav', { headers: { 'content-type': 'audio/wav' } });
+    }
     if (u.includes('text.pollinations.ai')) {
       let body = {};
       try { body = JSON.parse(opts.body || '{}'); } catch { /* noop */ }
@@ -286,6 +289,16 @@ async function scenarioOnline() {
   doc.querySelector('#btnAddScene').click();
   await waitFor(() => doc.querySelectorAll('.scene-card').length === 7, 3000);
   t('thêm cảnh mới OK', doc.querySelectorAll('.scene-card').length === 7);
+
+  /* giọng local qua adapter /api/tts giả */
+  const studioVoice = doc.querySelector('#studioVoice');
+  studioVoice.value = 'local-viettts';
+  studioVoice.dispatchEvent(new w.Event('change', { bubbles: true }));
+  doc.querySelector('#btnRegenVoice').click();
+  const localDone = await waitFor(() => bodyCardsOf(doc)
+    .filter(c => c.querySelector('.scene-text').value.trim())
+    .every(c => c.querySelector('.scene-meta').textContent.includes('Local TTS')), 5000);
+  t('giọng local chạy qua adapter proxy', localDone);
 
   /* modal xuất */
   doc.querySelector('#btnExport').click();

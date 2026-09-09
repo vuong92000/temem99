@@ -1415,7 +1415,7 @@ $$('#modeTabs .tab').forEach(t => {
     t.classList.add('active');
     mode = t.dataset.mode;
     if (mode === 'ai') {
-      ui.labelTopic.textContent = 'Chủ đề video';
+      ui.labelTopic.textContent = 'Mô tả video / chủ đề';
       ui.inputTopic.placeholder = 'Ví dụ: Trí tuệ nhân tạo và tương lai của nhân loại\n\nMẹo: càng mô tả rõ bạn muốn nói về điều gì, kịch bản càng chuẩn.';
     } else {
       ui.labelTopic.textContent = 'Kịch bản của bạn (AI sẽ chia thành các cảnh)';

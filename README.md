@@ -9,7 +9,7 @@
 | ✍️ **AI Director / Google Vids-style** | Chọn Storyboard, Thuyết trình, Sản phẩm, Social reel, Prompt Lab hoặc **Phim ngắn AI** → AI viết storyboard có thể xem trước/chỉnh sửa trước khi dựng. |
 | ✦ **AI Script Wizard** | Nhập một tiêu đề ngắn → tạo 3–10 cảnh (mặc định 8), lời bình tiếng Việt, prompt video tiếng Anh và mã nhân vật `CHART 1`, `CHART 2` để giữ consistency. Có preview Glow Pulse và nút **Nạp Prompt** vào hàng đợi sản xuất. |
 | 🎞 **AI làm phim ngắn** | Tạo film bible, logline, nhân vật nhất quán, thể loại, cấu trúc 3 hồi, shot type, thoại, prompt ảnh/chuyển động và dựng preview thành video. |
-| 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
+| 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, **Gemini image qua Google OAuth**, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
 | 🪄 **Ảnh tham chiếu** | Tạo keyframe/reference image riêng bằng prompt cho từng cảnh, dùng làm frame đầu khi gọi Veo. |
 | 🎬 **Google Veo + Agnes** | Nút tạo kịch bản + workflow **Veo 3.1 Lite · lower priority**, tab riêng **Agnes Video** cho creative multi-scene/simple clip, hoặc chọn Agnes làm nguồn clip trong Studio; poll task, xem/tải MP4 và gắn clip vào scene để preview/export. |
@@ -50,6 +50,7 @@ public/
     ai.js            Gọi Pollinations.ai (kịch bản / ảnh / giọng đọc) + fallback
     veo.js           Adapter Gemini REST API / Google Veo 3.1, poll operation + MP4
     agnes.js         Adapter Agnes creative/simple task API qua /api/agnes
+    gemini.js        Google OAuth status/login + Gemini image qua server proxy
     local-tts.js     Adapter VietTTS / Kokoro / Piper qua server proxy
     art.js           Nhận diện chủ đề, ảnh thủ tục (procedural art), thư viện ảnh
     audio.js         AudioContext, Web Speech API, nhạc nền Web Audio
@@ -59,17 +60,41 @@ public/
   library/           9 ảnh nền AI tạo sẵn (dự phòng offline)
 ```
 
-**Nguyên tắc thiết kế:** mọi tính năng AI đều chạy phía trình duyệt người dùng và đều có phương án dự phòng offline, nên app vẫn dùng được khi mất mạng hoặc dịch vụ ngoài bị giới hạn tốc độ.
+**Nguyên tắc thiết kế:** các tính năng AI phía trình duyệt đều có phương án dự phòng offline; riêng OAuth/Gemini và các provider local đi qua server proxy để không lộ credential hoặc gọi localhost từ browser.
 
 ## ⚠️ Lưu ý
 
 - Dịch vụ AI online dùng **Pollinations.ai** (miễn phí, không cần key) — có giới hạn tốc độ; khi vượt giới hạn app tự chuyển sang fallback.
-- Google Veo cần **Gemini API key**. Trong Studio bấm **🎬 Veo**, nhập key lấy từ [Google AI Studio](https://aistudio.google.com/apikey), chọn model/tỉ lệ/thời lượng/độ phân giải. Key chỉ nằm trong sessionStorage của trình duyệt; production nên dùng server proxy, không commit key.
+- Google Veo hiện vẫn dùng **Gemini API key** riêng trong modal Veo. Trong Studio bấm **🎬 Veo**, nhập key lấy từ [Google AI Studio](https://aistudio.google.com/apikey), chọn model/tỉ lệ/thời lượng/độ phân giải. Key chỉ nằm trong sessionStorage của trình duyệt; production nên dùng server proxy, không commit key.
+- Gemini image generation dùng **Google OAuth server-side**, không dùng Google username/password và không nhầm ID token với access token. Người vận hành cần tạo OAuth client dạng Web application, bật Gemini/Generative Language API, cấp quyền project và đặt `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_CLOUD_PROJECT_ID`, cùng `GOOGLE_OAUTH_REDIRECT_URI` nếu host không phải localhost. Người dùng bấm **🔐 Đăng nhập Gemini**, sau đó chọn `✨ Gemini — ảnh qua Google OAuth` ở màn tạo mới; access token/refresh token chỉ nằm trong bộ nhớ server.
 - Có thêm helper server-side theo SDK Python tại `scripts/veo3_lite_generate.py`: cài `python -m pip install -r requirements-veo.txt`, đặt `GEMINI_API_KEY`, rồi chạy `python scripts/veo3_lite_generate.py --prompt "..." --output output.mp4`.
 - Veo tạo clip bất đồng bộ 4–8 giây và có thể nhận ảnh đầu vào; clip MP4 được gắn vào scene hiện tại. Video tổng hợp vẫn có thể xuất bằng MediaRecorder/WebM.
 - Video xuất ra là **WebM** (mở bằng Chrome/Edge, đăng thẳng lên YouTube/TikTok được). Cần MP4 thì dùng công cụ chuyển đổi (vd. CloudConvert, ffmpeg).
 - Quá trình xuất chạy **theo thời gian thực** — giữ tab mở và hiển thị cho đến khi xong.
 - Giọng đọc trình duyệt chỉ phát khi xem trước, **không ghi được** vào file xuất ra — muốn có giọng trong video hãy dùng giọng AI online hoặc nút 🎫 thu âm.
+
+## 🔐 Google OAuth + Gemini image generation (tuỳ chọn)
+
+VideoAI Studio dùng OAuth 2.0 chính thức để lấy quyền gọi Gemini/Google Cloud. Đây **không phải** Google Sign-In ID token: access token được giữ trong session server và không được gửi vào JavaScript/browser. Server gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, rồi chuyển `inlineData` thành ảnh cho scene.
+
+Tạo Google Cloud project, bật Gemini/Generative Language API, tạo OAuth consent screen và OAuth client loại **Web application**. Thêm redirect URI đúng host chạy app, ví dụ `http://localhost:3000/api/google/oauth/callback`, rồi cấu hình trước khi chạy:
+
+```bash
+export GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com"
+export GOOGLE_OAUTH_CLIENT_SECRET="..."
+export GOOGLE_CLOUD_PROJECT_ID="my-gemini-project"
+# Bắt buộc khi chạy qua tunnel/preview hoặc domain khác localhost:
+export GOOGLE_OAUTH_REDIRECT_URI="https://your-host.example/api/google/oauth/callback"
+# Có thể override khi Google đổi model; mặc định hiện tại:
+export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
+npm start
+```
+
+Bấm **🔐 Đăng nhập Gemini**, chấp thuận quyền Google Cloud, rồi ở **Chế độ hình ảnh AI** chọn **✨ Gemini — ảnh qua Google OAuth**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, ảnh Gemini được dùng trực tiếp làm asset scene. Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa cấu hình OAuth, các chế độ Pollinations/offline và workflow Veo/Agnes hiện tại vẫn hoạt động bình thường.
+
+> Token nằm trong `Map` phía server theo cookie HttpOnly phiên và mất khi process restart. Production nên dùng HTTPS, session store bền vững/mã hoá, CSRF và rate-limit phù hợp với mô hình triển khai.
+
+Kiểm thử OAuth status, token exchange mock và Gemini image proxy không cần credential thật bằng `npm run test:google`.
 
 ## 🗺 Ý tưởng phát triển tiếp
 

@@ -10,6 +10,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
@@ -58,6 +59,143 @@ function readJson(req, maxBytes = 1_000_000) {
     });
     req.on('error', reject);
   });
+}
+
+const googleSessions = new Map();
+const googleOauthStates = new Map();
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/cloud-platform';
+
+function cookieValue(req, name) {
+  const item = String(req.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith(`${name}=`));
+  return item ? decodeURIComponent(item.slice(name.length + 1)) : '';
+}
+
+function sessionId(req, res) {
+  const existing = cookieValue(req, 'videoai_sid');
+  if (existing) return existing;
+  const id = crypto.randomBytes(24).toString('hex');
+  res.setHeader('Set-Cookie', `videoai_sid=${encodeURIComponent(id)}; HttpOnly; SameSite=Lax; Path=/`);
+  return id;
+}
+
+function googleConfig() {
+  return {
+    clientId: String(process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
+    clientSecret: String(process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
+    projectId: String(process.env.GOOGLE_CLOUD_PROJECT_ID || '').trim(),
+  };
+}
+
+function requestOrigin(req) {
+  const forwarded = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const protocol = forwarded || (req.socket.encrypted ? 'https' : 'http');
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  return `${protocol}://${host}`;
+}
+
+function googleRedirectUri(req) {
+  return String(process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim()
+    || `${requestOrigin(req)}/api/google/oauth/callback`;
+}
+
+async function postForm(url, values) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(values),
+  });
+  return { response, body: await response.json().catch(() => ({})) };
+}
+
+async function googleAccessToken(req) {
+  const sid = cookieValue(req, 'videoai_sid');
+  const session = googleSessions.get(sid);
+  if (!session) return null;
+  if (session.expiresAt > Date.now() + 60_000) return session.accessToken;
+  if (!session.refreshToken) return null;
+  const cfg = googleConfig();
+  const token = await postForm(process.env.GOOGLE_OAUTH_TOKEN_URL || 'https://oauth2.googleapis.com/token', {
+    client_id: cfg.clientId,
+    client_secret: cfg.clientSecret,
+    refresh_token: session.refreshToken,
+    grant_type: 'refresh_token',
+  });
+  if (!token.response.ok || !token.body.access_token) return null;
+  session.accessToken = token.body.access_token;
+  session.expiresAt = Date.now() + Number(token.body.expires_in || 3600) * 1000;
+  return session.accessToken;
+}
+
+async function proxyGeminiImage(req, res) {
+  if (req.method !== 'POST') return send(res, 405, JSON.stringify({ error: 'Method Not Allowed' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  try {
+    const cfg = googleConfig();
+    const token = await googleAccessToken(req);
+    if (!cfg.projectId) return send(res, 503, JSON.stringify({ error: 'Thiếu GOOGLE_CLOUD_PROJECT_ID.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    if (!token) return send(res, 401, JSON.stringify({ error: 'Chưa đăng nhập Google Gemini. Bấm Đăng nhập Gemini trước.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const body = await readJson(req);
+    const prompt = String(body.prompt || '').trim();
+    if (!prompt) return send(res, 400, JSON.stringify({ error: 'Prompt ảnh Gemini đang trống.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const model = String(body.model || process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image-preview');
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: body.aspectRatio || '16:9', imageSize: body.imageSize || '1K' },
+      },
+    };
+    const geminiBase = String(process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').replace(/\/$/, '');
+    const upstream = await fetch(`${geminiBase}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-goog-user-project': cfg.projectId },
+      body: JSON.stringify(payload),
+    });
+    const result = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) return send(res, upstream.status, JSON.stringify({ error: result?.error?.message || `Gemini trả về ${upstream.status}` }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const imagePart = result?.candidates?.[0]?.content?.parts?.find(part => part.inlineData?.data);
+    if (!imagePart) return send(res, 502, JSON.stringify({ error: 'Gemini không trả về dữ liệu ảnh.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const mime = imagePart.inlineData.mimeType || 'image/png';
+    return send(res, 200, Buffer.from(imagePart.inlineData.data, 'base64'), { 'Content-Type': mime, 'Cache-Control': 'no-store' });
+  } catch (err) {
+    return send(res, 502, JSON.stringify({ error: err.message || 'Gemini image proxy error' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+}
+
+function googleAuthRoutes(req, res, urlPath) {
+  const cfg = googleConfig();
+  if (req.method === 'GET' && urlPath === '/api/google/status') {
+    const sid = cookieValue(req, 'videoai_sid');
+    const session = googleSessions.get(sid);
+    return send(res, 200, JSON.stringify({ configured: !!(cfg.clientId && cfg.clientSecret && cfg.projectId), authenticated: !!session, projectId: cfg.projectId || null }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+  if (req.method === 'POST' && urlPath === '/api/google/logout') {
+    googleSessions.delete(cookieValue(req, 'videoai_sid'));
+    return send(res, 200, JSON.stringify({ ok: true }), { 'Content-Type': 'application/json; charset=utf-8', 'Set-Cookie': 'videoai_sid=; Max-Age=0; Path=/' });
+  }
+  if (req.method === 'GET' && urlPath === '/api/google/oauth/start') {
+    if (!cfg.clientId || !cfg.clientSecret || !cfg.projectId) return send(res, 503, JSON.stringify({ error: 'Cần cấu hình GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET và GOOGLE_CLOUD_PROJECT_ID.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const sid = sessionId(req, res);
+    const state = crypto.randomBytes(24).toString('hex');
+    googleOauthStates.set(state, { sid, redirectUri: googleRedirectUri(req), createdAt: Date.now() });
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.search = new URLSearchParams({ client_id: cfg.clientId, redirect_uri: googleRedirectUri(req), response_type: 'code', scope: GOOGLE_SCOPES, access_type: 'offline', prompt: 'consent', state }).toString();
+    res.writeHead(302, { Location: authUrl.toString() });
+    return res.end();
+  }
+  if (req.method === 'GET' && urlPath === '/api/google/oauth/callback') {
+    const query = new URL(req.url, requestOrigin(req)).searchParams;
+    const state = googleOauthStates.get(query.get('state'));
+    if (!state || Date.now() - state.createdAt > 10 * 60 * 1000) return send(res, 400, 'Google OAuth state không hợp lệ hoặc đã hết hạn.');
+    googleOauthStates.delete(query.get('state'));
+    if (query.get('error')) return send(res, 400, `Google OAuth bị từ chối: ${query.get('error')}`);
+    return postForm(process.env.GOOGLE_OAUTH_TOKEN_URL || 'https://oauth2.googleapis.com/token', { code: query.get('code'), client_id: cfg.clientId, client_secret: cfg.clientSecret, redirect_uri: state.redirectUri, grant_type: 'authorization_code' }).then(token => {
+      if (!token.response.ok || !token.body.access_token) return send(res, 502, JSON.stringify({ error: 'Không đổi được Google authorization code.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      googleSessions.set(state.sid, { accessToken: token.body.access_token, refreshToken: token.body.refresh_token || '', expiresAt: Date.now() + Number(token.body.expires_in || 3600) * 1000 });
+      res.writeHead(302, { Location: '/', 'Set-Cookie': `videoai_sid=${encodeURIComponent(state.sid)}; HttpOnly; SameSite=Lax; Path=/` });
+      return res.end();
+    }).catch(err => send(res, 502, JSON.stringify({ error: err.message }), { 'Content-Type': 'application/json; charset=utf-8' }));
+  }
+  return null;
 }
 
 function agnesBaseUrl() {
@@ -223,11 +361,18 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json; charset=utf-8',
       });
     }
+    const apiPath = req.url.split('?')[0];
+    if (['/api/google/status', '/api/google/logout', '/api/google/oauth/start', '/api/google/oauth/callback'].includes(apiPath)) {
+      return googleAuthRoutes(req, res, apiPath);
+    }
+    if (apiPath === '/api/gemini/image') {
+      return proxyGeminiImage(req, res);
+    }
     if (req.url.startsWith('/api/tts')) {
       return proxyLocalTTS(req, res);
     }
     if (req.url.startsWith('/api/agnes/')) {
-      return proxyAgnes(req, res, req.url.split('?')[0]);
+      return proxyAgnes(req, res, apiPath);
     }
     return send(res, 404, JSON.stringify({ error: 'Unknown API' }), {
       'Content-Type': 'application/json; charset=utf-8',

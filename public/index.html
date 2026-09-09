@@ -26,6 +26,7 @@
     </div>
     <div class="topbar-actions">
       <span id="serviceChip" class="chip" title="Trạng thái các dịch vụ AI online">⏳ Đang kiểm tra AI…</span>
+      <button id="btnGeminiAuth" class="btn ghost" title="Đăng nhập Google để dùng Gemini image generation">🔐 Đăng nhập Gemini</button>
       <button id="btnAgnesTab" class="btn ghost">🧩 Agnes Video</button>
       <button id="btnSources" class="btn ghost">🧩 Nguồn mở</button>
       <button id="btnHelp" class="btn ghost">❓ Hướng dẫn</button>
@@ -125,6 +126,7 @@
                 <select id="inputImageMode">
                   <option value="hybrid">⚡ Hybrid — AI trước, thư viện khi lỗi</option>
                   <option value="online">🖼 AI từng cảnh — ưu tiên Pollinations</option>
+                  <option value="gemini">✨ Gemini — ảnh qua Google OAuth</option>
                   <option value="offline">📚 Offline — thư viện & ảnh procedural</option>
                 </select>
               </label>

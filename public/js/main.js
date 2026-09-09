@@ -15,6 +15,7 @@ import { Renderer, buildTimeline } from './renderer.js';
 import { exportVideo, extForMime } from './exporter.js';
 import { generateVeoVideo, veoModelLabel } from './veo.js';
 import { generateAgnesVideo, generateAgnesCreativeVideo, agnesModelLabel } from './agnes.js';
+import { getGeminiStatus, startGoogleGeminiLogin, logoutGoogleGemini, generateGeminiImage } from './gemini.js';
 
 /* ═══════════ Trạng thái ═══════════ */
 
@@ -138,6 +139,7 @@ const browserTTS = new BrowserTTS();
 
 const ui = {
   serviceChip: $('#serviceChip'),
+  btnGeminiAuth: $('#btnGeminiAuth'),
   screenCreate: $('#screen-create'),
   screenStudio: $('#screen-studio'),
   screenAgnes: $('#screen-agnes'), btnAgnesTab: $('#btnAgnesTab'), btnAgnesBack: $('#btnAgnesBack'),
@@ -641,6 +643,13 @@ function deriveTitle(topic, parts) {
   return t.length > 70 ? t.slice(0, 67) + '…' : t;
 }
 
+async function generateConfiguredImage(prompt, seed, w, h) {
+  if (state.imageMode === 'gemini') {
+    return generateGeminiImage(prompt, { aspectRatio: state.aspect, imageSize: '1K' });
+  }
+  return generateImageForPrompt(prompt, seed, w, h);
+}
+
 async function createFlow({ openVeoLite = false } = {}) {
   const opts = collectCreateOpts();
   if (!opts.topic.trim()) {
@@ -732,14 +741,14 @@ async function createFlow({ openVeoLite = false } = {}) {
   }
 
   // ── Hình ảnh ──
-  let useAIImage = state.imageMode !== 'offline' && service.image !== false;
+  let useAIImage = state.imageMode === 'gemini' || (state.imageMode !== 'offline' && service.image !== false);
   for (let i = 0; i < state.scenes.length; i++) {
     const sc = state.scenes[i];
     setBusy('🖼 Đang dựng hình…', `Hình nền cảnh ${i + 1}/${state.scenes.length}…`, 0.55 + 0.44 * (i / state.scenes.length));
     let done = false;
     if (useAIImage && sc.type === 'body' && sc.imagePrompt) {
       try {
-        const { img, url } = await generateImageForPrompt(sc.imagePrompt, sc.seed, w, h);
+        const { img, url } = await generateConfiguredImage(sc.imagePrompt, sc.seed, w, h);
         sc.imageKind = 'ai';
         sc.imageRef = url;
         assets.set(sc.id, { key: `${sc.id}|ai|${url}|${sc.seed}|${w}x${h}`, canvas: makeSceneCanvas(img, w, h, sc.theme, sc.seed) });
@@ -942,7 +951,7 @@ async function handleSceneAction(sc, act) {
         const kit = sc.referencePrompt || sc.imagePrompt
           ? { imagePrompt: sc.referencePrompt || sc.imagePrompt }
           : getLocalPromptKit(sc.text, { style: state.style, motionStyle: state.motionStyle, creativeMode: state.creativeMode });
-        const { url } = await generateImageForPrompt(kit.imagePrompt, sc.seed, RES[state.aspect].w, RES[state.aspect].h);
+        const { url } = await generateConfiguredImage(kit.imagePrompt, sc.seed, RES[state.aspect].w, RES[state.aspect].h);
         sc.referencePrompt = kit.imagePrompt;
         sc.referenceImageRef = url;
         service.image = true;
@@ -1006,7 +1015,7 @@ async function handleSceneAction(sc, act) {
           sc.motionPrompt = sc.motionPrompt || kit.motionPrompt;
         }
         const { w, h } = RES[state.aspect];
-        const { img, url } = await generateImageForPrompt(sc.imagePrompt, sc.seed, w, h);
+        const { img, url } = await generateConfiguredImage(sc.imagePrompt, sc.seed, w, h);
         sc.imageKind = 'ai'; sc.imageRef = url;
         assets.set(sc.id, { key: `${sc.id}|ai|${url}|${sc.seed}|${w}x${h}`, canvas: makeSceneCanvas(img, w, h, sc.theme, sc.seed) });
         service.image = true; updateServiceChip();
@@ -1995,6 +2004,49 @@ $$('.overlay [data-close]').forEach(btn => {
   });
 });
 
+// Google OAuth + Gemini image generation
+let geminiAuthStatus = { configured: false, authenticated: false };
+
+async function syncGeminiAuthUI() {
+  if (!ui.btnGeminiAuth) return;
+  try {
+    geminiAuthStatus = await getGeminiStatus();
+    if (geminiAuthStatus.authenticated) {
+      ui.btnGeminiAuth.textContent = '✅ Gemini đã đăng nhập';
+      ui.btnGeminiAuth.title = 'Bấm để đăng xuất Google Gemini';
+      ui.btnGeminiAuth.classList.add('ok');
+    } else {
+      ui.btnGeminiAuth.textContent = geminiAuthStatus.configured ? '🔐 Đăng nhập Gemini' : '🔐 Gemini chưa cấu hình';
+      ui.btnGeminiAuth.title = geminiAuthStatus.configured
+        ? 'Đăng nhập Google để dùng Gemini image generation'
+        : 'Quản trị viên cần cấu hình Google OAuth và Google Cloud project';
+      ui.btnGeminiAuth.classList.remove('ok');
+    }
+  } catch (error) {
+    ui.btnGeminiAuth.textContent = '🔐 Gemini không khả dụng';
+    ui.btnGeminiAuth.title = error.message || 'Không kiểm tra được trạng thái Google Gemini';
+  }
+}
+
+ui.btnGeminiAuth.addEventListener('click', async () => {
+  try {
+    if (geminiAuthStatus.authenticated) {
+      if (!window.confirm('Đăng xuất Google Gemini trên phiên này?')) return;
+      await logoutGoogleGemini();
+      await syncGeminiAuthUI();
+      toast('Đã đăng xuất Google Gemini.', 'ok', 2500);
+      return;
+    }
+    if (!geminiAuthStatus.configured) {
+      toast('Quản trị viên cần đặt GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET và GOOGLE_CLOUD_PROJECT_ID trước.', 'warn', 7000);
+      return;
+    }
+    startGoogleGeminiLogin();
+  } catch (error) {
+    toast(`Google Gemini: ${escapeHtml(error.message || 'không thực hiện được')}`, 'err', 7000);
+  }
+});
+
 // Hướng dẫn
 $('#btnHelp').addEventListener('click', () => $('#helpModal').classList.remove('hidden'));
 
@@ -2010,6 +2062,7 @@ $('#btnSources').addEventListener('click', () => ui.sourcesModal.classList.remov
 
 function init() {
   updateServiceChip();
+  syncGeminiAuthUI();
 
   // Kiểm tra dịch vụ AI online trong nền
   setTimeout(async () => {

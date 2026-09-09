@@ -131,7 +131,46 @@ python scripts/veo3_lite_generate.py \
 
 Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HTML hoặc tin nhắn công khai.
 
-## 6. Thêm nguồn tạo video Agnes AI (tuỳ chọn)
+## 6. Đăng nhập Google và tạo ảnh bằng Gemini (tuỳ chọn)
+
+VideoAI Studio dùng OAuth 2.0 chính thức để gọi Gemini bằng quyền Google Cloud của người dùng. Không nhập Google username/password vào app. Google Sign-In ID token cũng không được dùng thay cho OAuth access token: token truy cập được giữ trong session phía server và không expose cho frontend.
+
+### Cấu hình Google Cloud
+
+1. Tạo/chọn Google Cloud project và bật Gemini/Generative Language API.
+2. Tạo OAuth consent screen và OAuth client ID loại **Web application**.
+3. Thêm redirect URI đúng host chạy app, ví dụ:
+
+```text
+http://localhost:3000/api/google/oauth/callback
+```
+
+Khi chạy qua preview/tunnel/domain, redirect URI phải là URL public chính xác, ví dụ `https://your-host.example/api/google/oauth/callback`.
+
+### Cấu hình server
+
+```bash
+export GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com"
+export GOOGLE_OAUTH_CLIENT_SECRET="..."
+export GOOGLE_CLOUD_PROJECT_ID="my-gemini-project"
+# Bắt buộc nếu host không phải localhost:
+export GOOGLE_OAUTH_REDIRECT_URI="https://your-host.example/api/google/oauth/callback"
+# Có thể override model theo danh sách model hiện hành của Google:
+export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
+npm start
+```
+
+Trong app, bấm **🔐 Đăng nhập Gemini** và chấp thuận quyền Google Cloud. Sau đó chọn **✨ Gemini — ảnh qua Google OAuth** ở mục **Chế độ hình ảnh AI**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, VideoAI Studio gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, đọc `candidates[].content.parts[].inlineData` rồi dùng ảnh trả về làm asset scene.
+
+Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa có credential, Pollinations/offline, Veo và Agnes không bị thay đổi. Token chỉ nằm trong `Map` server theo cookie HttpOnly và mất khi process restart; production nên thêm HTTPS, session store mã hoá/bền vững, CSRF và rate-limit.
+
+Kiểm thử tích hợp mock không cần credential thật:
+
+```bash
+npm run test:google
+```
+
+## 7. Thêm nguồn tạo video Agnes AI (tuỳ chọn)
 
 VideoAI Studio có thể dùng [Agnes Video Generator](https://github.com/lcy362/agnes-video-generator) làm nguồn tạo clip thay cho Google Veo. Agnes là pipeline mã nguồn mở/self-hosted có text-to-video, nhiều cảnh, narration, subtitles, keyframes và digital anchor.
 
@@ -148,7 +187,7 @@ Trên thanh trên cùng, mở tab riêng **🧩 Agnes Video**. Chọn **Creative
 
 > Agnes dùng API key/model do service Agnes quản lý. Không commit `AGNES_API_KEY` vào Git. License hiện được repository công bố là MIT, nhưng vẫn cần kiểm tra license của model/dịch vụ upstream trước khi phát hành thương mại.
 
-## 7. Xử lý sự cố thường gặp
+## 8. Xử lý sự cố thường gặp
 
 | Triệu chứng | Nguyên nhân & cách xử lý |
 |---|---|
@@ -161,7 +200,7 @@ Trên thanh trên cùng, mở tab riêng **🧩 Agnes Video**. Chọn **Creative
 
 ---
 
-## 8. Kiểm tra tự động (tuỳ chọn)
+## 9. Kiểm tra tự động (tuỳ chọn)
 
 Repo kèm kịch bản smoke-test mô phỏng cả luồng online lẫn offline:
 
@@ -173,7 +212,7 @@ Kết quả mong đợi: `24 pass, 0 fail, 0 lỗi runtime`.
 
 ---
 
-## 9. Cấu trúc thư mục
+## 10. Cấu trúc thư mục
 
 ```
 temem99/
@@ -183,6 +222,7 @@ temem99/
 │   ├── smoke-test.mjs   Kiểm thử tự động (online + offline)
 │   ├── tts-proxy-test.mjs Kiểm thử proxy TTS local
 │   ├── agnes-proxy-test.mjs Kiểm thử proxy Agnes
+│   ├── google-gemini-test.mjs Kiểm thử OAuth/Gemini bằng mock
 │   └── veo3_lite_generate.py  Helper Python tạo clip Veo server-side
 ├── requirements-veo.txt  Dependency tuỳ chọn cho helper Google Veo
 └── public/
@@ -199,6 +239,7 @@ temem99/
     │   ├── exporter.js  Trộn âm offline + MediaRecorder xuất video
     │   ├── veo.js       Adapter Gemini REST API / Google Veo
     │   ├── agnes.js     Adapter Agnes creative/simple qua /api/agnes
+    │   ├── gemini.js    Google OAuth + Gemini image qua /api/gemini/image
     │   ├── local-tts.js Adapter VietTTS/Kokoro/Piper qua /api/tts
     │   └── util.js      Tiện ích (PRNG, toast, timeout…)
     └── library/         9 ảnh nền AI dự phòng (chạy offline vẫn có ảnh)
@@ -206,16 +247,16 @@ temem99/
 
 ---
 
-## 10. Câu hỏi thường gặp
+## 11. Câu hỏi thường gặp
 
 **❓ Có cần API key hay trả phí không?**
-Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần key) và luôn có phương án dự phòng offline.
+Không cần key cho Pollinations/offline. Gemini image là tuỳ chọn: cần OAuth client và quyền Google Cloud, nhưng access token không được đưa vào frontend.
 
 **❓ Video xuất ra định dạng gì? Đăng TikTok/YouTube được không?**
 WebM (MP4 trên Safari). Đăng thẳng lên YouTube/TikTok được; muốn MP4 chuẩn thì chuyển đổi bằng ffmpeg: `ffmpeg -i video.webm -c:v libx264 -c:a aac video.mp4`.
 
 **❓ Dữ liệu có bị gửi lên server nào không?**
-Không có backend lưu project. Mặc định server chỉ phục vụ file tĩnh; khi chọn Google Veo, TTS local hoặc Agnes, dữ liệu sẽ được gửi tới đúng provider đó qua proxy bạn cấu hình.
+Server không lưu project; project vẫn ở localStorage trình duyệt. OAuth/Gemini, Google Veo, TTS local và Agnes chỉ gửi dữ liệu tới provider tương ứng qua proxy, với OAuth token giữ phía server.
 
 **❓ Chạy trên điện thoại được không?**
 Mở được và xem trước được, nhưng nên dùng máy tính để trải nghiệm đầy đủ (thu âm, xuất video nặng).

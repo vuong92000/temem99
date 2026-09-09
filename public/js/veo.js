@@ -81,7 +81,7 @@ export async function generateVeoVideo({
   negativePrompt = '',
   imageUrl = null,
   aspectRatio = '16:9',
-  durationSeconds = '8',
+  durationSeconds = 8,
   resolution = '720p',
   onProgress,
   pollMs = 10000,
@@ -89,12 +89,16 @@ export async function generateVeoVideo({
 } = {}) {
   if (!apiKey?.trim()) throw new Error('Cần Gemini API key để gọi Google Veo.');
   if (!prompt?.trim()) throw new Error('Prompt video đang trống.');
+  const normalizedDuration = Number(durationSeconds);
+  if (!Number.isFinite(normalizedDuration) || normalizedDuration <= 0) {
+    throw new Error('Thời lượng Veo phải là một số hợp lệ.');
+  }
 
   const instance = { prompt: prompt.trim() };
   if (imageUrl) instance.image = await imageUrlToPart(imageUrl);
   const parameters = {
     aspectRatio,
-    durationSeconds: String(durationSeconds),
+    durationSeconds: normalizedDuration,
     resolution,
     sampleCount: 1,
   };
@@ -141,7 +145,7 @@ export async function generateVeoVideo({
     throw new Error('Veo hoàn tất nhưng không tìm thấy video trong response.');
   }
   onProgress?.(1, 'Video Veo đã sẵn sàng.');
-  return { blob, uri, model, durationSeconds: String(durationSeconds) };
+  return { blob, uri, model, durationSeconds: normalizedDuration };
 }
 
 export function veoModelLabel(model) {

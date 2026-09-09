@@ -25,6 +25,7 @@ Bản nâng cấp này thêm một workflow giống kiểu **Google Vids**: ngư
 | VietTTS | Vietnamese TTS / OpenAI-compatible local endpoint | https://github.com/dangvansam/viet-tts |
 | Kokoro ONNX | Lightweight local TTS runtime | https://github.com/thewh1teagle/kokoro-onnx |
 | Piper | CPU/edge local TTS endpoint | https://github.com/OHF-Voice/piper1-gpl |
+| Agnes Video Generator | Self-hosted multi-scene text-to-video, TTS, subtitles, keyframes, digital anchor | https://github.com/lcy362/agnes-video-generator |
 
 Các repository trên chỉ là **tài liệu tham khảo kiến trúc và tính năng** trong bản này. Không vendored code, model weights, logo hoặc asset của chúng vào repository `temem99`. Nếu sau này muốn đưa một thư viện cụ thể vào bundle, cần kiểm tra license của chính commit/version đó và thêm attribution tương ứng.
 

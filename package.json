@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test:tts": "node scripts/tts-proxy-test.mjs"
+    "test:tts": "node scripts/tts-proxy-test.mjs",
+    "test:agnes": "node scripts/agnes-proxy-test.mjs"
   },
   "engines": {
     "node": ">=18"

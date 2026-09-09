@@ -14,6 +14,7 @@ import { isLocalVoice, synthesizeLocalVoice } from './local-tts.js';
 import { Renderer, buildTimeline } from './renderer.js';
 import { exportVideo, extForMime } from './exporter.js';
 import { generateVeoVideo, veoModelLabel } from './veo.js';
+import { generateAgnesVideo, agnesModelLabel } from './agnes.js';
 
 /* ═══════════ Trạng thái ═══════════ */
 
@@ -119,6 +120,12 @@ const OPEN_SOURCE_REFERENCES = [
     tag: 'CPU / edge TTS',
     text: 'Adapter endpoint local cho Piper; phù hợp máy yếu và chạy offline khi đã tải voice model.',
   },
+  {
+    name: 'Agnes Video Generator',
+    url: 'https://github.com/lcy362/agnes-video-generator',
+    tag: 'self-hosted video pipeline · MIT',
+    text: 'Nguồn tạo video multi-scene có task API, narration, subtitles, keyframes và digital anchor; VideoAI Studio kết nối qua /api/agnes.',
+  },
 ];
 
 const canvas = $('#previewCanvas');
@@ -190,7 +197,8 @@ const ui = {
   expStatus: $('#expStatus'), expBar: $('#expBar'),
   expVideo: $('#expVideo'), btnDownload: $('#btnDownload'), expHint: $('#expHint'),
   // Google Veo modal
-  veoModal: $('#veoModal'), veoApiKey: $('#veoApiKey'), veoModel: $('#veoModel'),
+  veoModal: $('#veoModal'), videoProvider: $('#videoProvider'), veoApiKey: $('#veoApiKey'), veoModel: $('#veoModel'),
+  veoApiKeyField: $('#veoApiKeyField'), veoApiHint: $('#veoApiHint'), agnesHint: $('#agnesHint'), veoModelField: $('#veoModelField'),
   veoAspect: $('#veoAspect'), veoDuration: $('#veoDuration'), veoResolution: $('#veoResolution'),
   veoPrompt: $('#veoPrompt'), veoNegative: $('#veoNegative'), veoReferenceBox: $('#veoReferenceBox'),
   btnVeoGenerate: $('#btnVeoGenerate'), veoProgress: $('#veoProgress'), veoStatus: $('#veoStatus'), veoBar: $('#veoBar'),
@@ -1220,15 +1228,26 @@ function currentBodyScene() {
   return active?.type === 'body' ? active : state.scenes.find(s => s.type === 'body') || null;
 }
 
+function syncVideoProviderUI() {
+  const isAgnes = ui.videoProvider.value === 'agnes';
+  ui.veoApiKeyField.classList.toggle('hidden', isAgnes);
+  ui.veoApiHint.classList.toggle('hidden', isAgnes);
+  ui.agnesHint.classList.toggle('hidden', !isAgnes);
+  ui.veoModelField.classList.toggle('hidden', isAgnes);
+  ui.btnVeoGenerate.textContent = isAgnes ? '🎬 Bắt đầu tạo video Agnes' : '🎬 Bắt đầu tạo video Veo';
+}
+
 function openVeoModal(sc, { model = 'veo-3.1-generate-preview' } = {}) {
   if (!sc) {
-    toast('Hãy chọn một cảnh nội dung trước khi tạo video Veo.', 'warn');
+    toast('Hãy chọn một cảnh nội dung trước khi tạo video.', 'warn');
     return;
   }
   veoTargetScene = sc;
+  ui.videoProvider.value = 'veo';
   const savedKey = sessionStorage.getItem('videoai-veo-key') || '';
   ui.veoApiKey.value = savedKey;
   ui.veoModel.value = model;
+  syncVideoProviderUI();
   ui.veoAspect.value = state.aspect === '9:16' ? '9:16' : '16:9';
   ui.veoDuration.value = '8';
   ui.veoResolution.value = '720p';
@@ -1248,14 +1267,16 @@ function openVeoModal(sc, { model = 'veo-3.1-generate-preview' } = {}) {
   ui.veoModal.classList.remove('hidden');
 }
 
+ui.videoProvider.addEventListener('change', syncVideoProviderUI);
 ui.veoApiKey.addEventListener('input', () => {
   sessionStorage.setItem('videoai-veo-key', ui.veoApiKey.value.trim());
 });
 
 ui.btnVeoGenerate.addEventListener('click', async () => {
   if (!veoTargetScene) return;
+  const isAgnes = ui.videoProvider.value === 'agnes';
   const apiKey = ui.veoApiKey.value.trim();
-  if (!apiKey) {
+  if (!isAgnes && !apiKey) {
     toast('Hãy nhập Gemini API key để gọi Google Veo.', 'warn');
     ui.veoApiKey.focus();
     return;
@@ -1264,20 +1285,34 @@ ui.btnVeoGenerate.addEventListener('click', async () => {
   ui.veoProgress.classList.remove('hidden');
   ui.veoResult.classList.add('hidden');
   try {
-    const result = await generateVeoVideo({
-      apiKey,
-      model: ui.veoModel.value,
-      prompt: ui.veoPrompt.value,
-      negativePrompt: ui.veoNegative.value,
-      imageUrl: veoTargetScene.referenceImageRef || null,
-      aspectRatio: ui.veoAspect.value,
-      durationSeconds: ui.veoDuration.value,
-      resolution: ui.veoResolution.value,
-      onProgress: (p, text) => {
-        ui.veoBar.style.width = `${Math.round(p * 100)}%`;
-        ui.veoStatus.textContent = text;
-      },
-    });
+    let result;
+    if (isAgnes) {
+      const agnesResolution = state.aspect === '9:16' ? '768x1152' : state.aspect === '1:1' ? '1024x1024' : '1152x768';
+      result = await generateAgnesVideo({
+        prompt: ui.veoPrompt.value,
+        durationSeconds: ui.veoDuration.value,
+        resolution: agnesResolution,
+        onProgress: (p, text) => {
+          ui.veoBar.style.width = `${Math.round(p * 100)}%`;
+          ui.veoStatus.textContent = text;
+        },
+      });
+    } else {
+      result = await generateVeoVideo({
+        apiKey,
+        model: ui.veoModel.value,
+        prompt: ui.veoPrompt.value,
+        negativePrompt: ui.veoNegative.value,
+        imageUrl: veoTargetScene.referenceImageRef || null,
+        aspectRatio: ui.veoAspect.value,
+        durationSeconds: ui.veoDuration.value,
+        resolution: ui.veoResolution.value,
+        onProgress: (p, text) => {
+          ui.veoBar.style.width = `${Math.round(p * 100)}%`;
+          ui.veoStatus.textContent = text;
+        },
+      });
+    }
     if (veoObjectUrl) URL.revokeObjectURL(veoObjectUrl);
     veoObjectUrl = URL.createObjectURL(result.blob);
     const video = document.createElement('video');
@@ -1287,23 +1322,23 @@ ui.btnVeoGenerate.addEventListener('click', async () => {
     video.playsInline = true;
     await new Promise((resolve, reject) => {
       video.onloadedmetadata = resolve;
-      video.onerror = () => reject(new Error('Không đọc được clip Veo vừa tạo.'));
+      video.onerror = () => reject(new Error(`Không đọc được clip ${isAgnes ? 'Agnes' : 'Veo'} vừa tạo.`));
       setTimeout(() => resolve(), 12000);
     });
     veoTargetScene.videoRef = veoObjectUrl;
     veoTargetScene.videoEl = video;
     veoTargetScene.videoModel = result.model;
     ui.veoVideo.src = veoObjectUrl;
-    ui.veoResultHint.textContent = `${veoModelLabel(result.model)} · clip đã gắn vào cảnh hiện tại. Khi xuất video, renderer sẽ dùng clip này thay cho ảnh tĩnh.`;
+    ui.veoResultHint.textContent = `${isAgnes ? agnesModelLabel() : veoModelLabel(result.model)} · clip đã gắn vào cảnh hiện tại. Khi xuất video, renderer sẽ dùng clip này thay cho ảnh tĩnh.`;
     ui.veoProgress.classList.add('hidden');
     ui.veoResult.classList.remove('hidden');
     rebuild();
     renderSceneList();
-    toast('🎬 Google Veo đã tạo xong clip và gắn vào cảnh.', 'ok', 5000);
+    toast(`🎬 ${isAgnes ? 'Agnes AI' : 'Google Veo'} đã tạo xong clip và gắn vào cảnh.`, 'ok', 5000);
   } catch (error) {
     ui.veoProgress.classList.add('hidden');
-    ui.veoStatus.textContent = error.message || 'Veo tạo video thất bại.';
-    toast(`Google Veo lỗi: ${escapeHtml(error.message || 'kiểm tra API key/quota')}`, 'err', 8000);
+    ui.veoStatus.textContent = error.message || `${isAgnes ? 'Agnes' : 'Veo'} tạo video thất bại.`;
+    toast(`${isAgnes ? 'Agnes' : 'Google Veo'} lỗi: ${escapeHtml(error.message || 'kiểm tra cấu hình và quota')}`, 'err', 8000);
   } finally {
     ui.btnVeoGenerate.disabled = false;
   }

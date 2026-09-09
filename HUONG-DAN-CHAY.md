@@ -131,7 +131,24 @@ python scripts/veo3_lite_generate.py \
 
 Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HTML hoặc tin nhắn công khai.
 
-## 6. Xử lý sự cố thường gặp
+## 6. Thêm nguồn tạo video Agnes AI (tuỳ chọn)
+
+VideoAI Studio có thể dùng [Agnes Video Generator](https://github.com/lcy362/agnes-video-generator) làm nguồn tạo clip thay cho Google Veo. Agnes là pipeline mã nguồn mở/self-hosted có text-to-video, nhiều cảnh, narration, subtitles, keyframes và digital anchor.
+
+Khởi động Agnes theo hướng dẫn của repository đó, thường tại cổng `8765`, sau đó cấu hình proxy của VideoAI Studio:
+
+```bash
+export AGNES_URL="http://127.0.0.1:8765"
+# Nếu service Agnes yêu cầu header API key từ proxy:
+# export AGNES_API_KEY="..."
+npm start
+```
+
+Trong Studio, mở nút **🎬 Veo**, chọn **Nguồn tạo video → Agnes AI · self-hosted**, rồi bấm tạo video. Ứng dụng gọi `POST /api/tasks/simple`, theo dõi `GET /api/tasks/{task_id}` và tải clip từ `GET /api/video/{task_id}` qua server proxy `/api/agnes`; trình duyệt không gọi service local trực tiếp. Kiểm tra adapter bằng `npm run test:agnes`.
+
+> Agnes dùng API key/model do service Agnes quản lý. Không commit `AGNES_API_KEY` vào Git. License hiện được repository công bố là MIT, nhưng vẫn cần kiểm tra license của model/dịch vụ upstream trước khi phát hành thương mại.
+
+## 7. Xử lý sự cố thường gặp
 
 | Triệu chứng | Nguyên nhân & cách xử lý |
 |---|---|
@@ -144,7 +161,7 @@ Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HT
 
 ---
 
-## 7. Kiểm tra tự động (tuỳ chọn)
+## 8. Kiểm tra tự động (tuỳ chọn)
 
 Repo kèm kịch bản smoke-test mô phỏng cả luồng online lẫn offline:
 
@@ -156,7 +173,7 @@ Kết quả mong đợi: `24 pass, 0 fail, 0 lỗi runtime`.
 
 ---
 
-## 8. Cấu trúc thư mục
+## 9. Cấu trúc thư mục
 
 ```
 temem99/
@@ -164,6 +181,8 @@ temem99/
 ├── package.json         scripts: start / dev
 ├── scripts/
 │   ├── smoke-test.mjs   Kiểm thử tự động (online + offline)
+│   ├── tts-proxy-test.mjs Kiểm thử proxy TTS local
+│   ├── agnes-proxy-test.mjs Kiểm thử proxy Agnes
 │   └── veo3_lite_generate.py  Helper Python tạo clip Veo server-side
 ├── requirements-veo.txt  Dependency tuỳ chọn cho helper Google Veo
 └── public/
@@ -178,6 +197,7 @@ temem99/
     │   ├── renderer.js  Timeline + vẽ từng khung hình (Ken Burns, phụ đề…)
     │   ├── exporter.js  Trộn âm offline + MediaRecorder xuất video
     │   ├── veo.js       Adapter Gemini REST API / Google Veo
+    │   ├── agnes.js     Adapter Agnes qua /api/agnes
     │   ├── local-tts.js Adapter VietTTS/Kokoro/Piper qua /api/tts
     │   └── util.js      Tiện ích (PRNG, toast, timeout…)
     └── library/         9 ảnh nền AI dự phòng (chạy offline vẫn có ảnh)
@@ -185,7 +205,7 @@ temem99/
 
 ---
 
-## 9. Câu hỏi thường gặp
+## 10. Câu hỏi thường gặp
 
 **❓ Có cần API key hay trả phí không?**
 Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần key) và luôn có phương án dự phòng offline.
@@ -194,7 +214,7 @@ Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần k
 WebM (MP4 trên Safari). Đăng thẳng lên YouTube/TikTok được; muốn MP4 chuẩn thì chuyển đổi bằng ffmpeg: `ffmpeg -i video.webm -c:v libx264 -c:a aac video.mp4`.
 
 **❓ Dữ liệu có bị gửi lên server nào không?**
-Không có backend lưu dữ liệu — mọi thứ chạy trong trình duyệt bạn; server chỉ phục vụ file tĩnh.
+Không có backend lưu project. Mặc định server chỉ phục vụ file tĩnh; khi chọn Google Veo, TTS local hoặc Agnes, dữ liệu sẽ được gửi tới đúng provider đó qua proxy bạn cấu hình.
 
 **❓ Chạy trên điện thoại được không?**
 Mở được và xem trước được, nhưng nên dùng máy tính để trải nghiệm đầy đủ (thu âm, xuất video nặng).

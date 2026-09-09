@@ -421,14 +421,21 @@
     <div class="modal veo-modal">
       <div class="modal-head"><h3>🎬 Tạo video bằng Google Veo</h3><button class="btn icon" data-close>✕</button></div>
       <div class="modal-body">
-        <div class="veo-callout"><b>Google Veo 3.1</b><span>Tạo clip 4–8 giây từ prompt và ảnh tham chiếu, có thể có audio native. Veo 3.1 Lite phù hợp tác vụ lower priority/tiết kiệm.</span></div>
-        <label class="field">
+        <div class="veo-callout"><b>🎬 Video source</b><span>Chọn Google Veo hoặc Agnes AI. Agnes là pipeline mã nguồn mở/self-hosted, chạy qua server local và có task polling riêng.</span></div>
+        <label class="field"><span>Nguồn tạo video</span>
+          <select id="videoProvider">
+            <option value="veo">Google Veo 3.1 · Gemini API</option>
+            <option value="agnes">Agnes AI · self-hosted</option>
+          </select>
+        </label>
+        <label id="veoApiKeyField" class="field">
           <span>Gemini API key <em>(chỉ dùng trong phiên này)</em></span>
           <input id="veoApiKey" type="password" autocomplete="off" placeholder="AIza…">
         </label>
-        <p class="hint">Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio ↗</a>. Key không được lưu vào project; production nên dùng server proxy với biến môi trường.</p>
+        <p id="agnesHint" class="hint hidden">Agnes dùng proxy `/api/agnes`; đặt <code>AGNES_URL=http://127.0.0.1:8765</code> rồi khởi động lại VideoAI Studio. API key của Agnes nên được cấu hình ở service Agnes, không nhúng vào frontend.</p>
+        <p class="hint" id="veoApiHint">Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio ↗</a>. Key không được lưu vào project; production nên dùng server proxy với biến môi trường.</p>
         <div class="veo-grid">
-          <label class="field"><span>Model</span>
+          <label id="veoModelField" class="field"><span>Model</span>
             <select id="veoModel">
               <option value="veo-3.1-generate-preview">Veo 3.1 · quality + audio</option>
               <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast · thử nhanh</option>

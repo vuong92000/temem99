@@ -60,6 +60,81 @@ function readJson(req, maxBytes = 1_000_000) {
   });
 }
 
+function agnesBaseUrl() {
+  return String(process.env.AGNES_URL || '').trim().replace(/\/$/, '');
+}
+
+function agnesHeaders() {
+  const key = String(process.env.AGNES_API_KEY || '').trim();
+  return key
+    ? { 'X-API-Key': key, Authorization: `Bearer ${key}` }
+    : {};
+}
+
+async function proxyAgnes(req, res, urlPath) {
+  const base = agnesBaseUrl();
+  if (!base) {
+    return send(res, 503, JSON.stringify({ error: 'Chưa cấu hình Agnes AI. Đặt AGNES_URL, ví dụ http://127.0.0.1:8765, rồi khởi động lại server.' }), {
+      'Content-Type': 'application/json; charset=utf-8',
+    });
+  }
+  try {
+    if (req.method === 'POST' && urlPath === '/api/agnes/video') {
+      const body = await readJson(req);
+      const prompt = String(body.prompt || '').trim();
+      if (!prompt) return send(res, 400, JSON.stringify({ error: 'Prompt Agnes đang trống.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      const form = new URLSearchParams({
+        prompt,
+        mode: String(body.mode || 't2v'),
+        duration: String(body.duration || 5),
+        resolution: String(body.resolution || '768x1152'),
+      });
+      const upstream = await fetch(`${base}/api/tasks/simple`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...agnesHeaders() },
+        body: form,
+      });
+      const data = await upstream.arrayBuffer();
+      return send(res, upstream.status, Buffer.from(data), {
+        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+      });
+    }
+
+    const taskMatch = urlPath.match(/^\/api\/agnes\/tasks\/([A-Za-z0-9_-]+)$/);
+    if (req.method === 'GET' && taskMatch) {
+      const upstream = await fetch(`${base}/api/tasks/${taskMatch[1]}`, { headers: agnesHeaders() });
+      const data = await upstream.arrayBuffer();
+      return send(res, upstream.status, Buffer.from(data), {
+        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+      });
+    }
+
+    const videoMatch = urlPath.match(/^\/api\/agnes\/video\/([A-Za-z0-9_-]+)$/);
+    if (req.method === 'GET' && videoMatch) {
+      const upstream = await fetch(`${base}/api/video/${videoMatch[1]}`, { headers: agnesHeaders() });
+      const data = await upstream.arrayBuffer();
+      return send(res, upstream.status, Buffer.from(data), {
+        'Content-Type': upstream.headers.get('content-type') || 'video/mp4',
+        'Cache-Control': 'no-store',
+      });
+    }
+
+    if (req.method === 'GET' && urlPath === '/api/agnes/status') {
+      const upstream = await fetch(`${base}/api/models`, { headers: agnesHeaders() });
+      const data = await upstream.arrayBuffer();
+      return send(res, upstream.status, Buffer.from(data), {
+        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+      });
+    }
+
+    return send(res, 404, JSON.stringify({ error: 'Unknown Agnes API route' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  } catch (err) {
+    return send(res, 502, JSON.stringify({ error: err.message || 'Agnes proxy error' }), {
+      'Content-Type': 'application/json; charset=utf-8',
+    });
+  }
+}
+
 async function proxyLocalTTS(req, res) {
   if (req.method !== 'POST') {
     return send(res, 405, JSON.stringify({ error: 'Method Not Allowed' }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -141,6 +216,9 @@ const server = http.createServer((req, res) => {
     }
     if (req.url.startsWith('/api/tts')) {
       return proxyLocalTTS(req, res);
+    }
+    if (req.url.startsWith('/api/agnes/')) {
+      return proxyAgnes(req, res, req.url.split('?')[0]);
     }
     return send(res, 404, JSON.stringify({ error: 'Unknown API' }), {
       'Content-Type': 'application/json; charset=utf-8',

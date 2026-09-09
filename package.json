@@ -1,7 +1,7 @@
 {
-  "name": "videoai-studio",
+  "name": "photoai-studio",
   "version": "1.0.0",
-  "description": "Ứng dụng tạo video bằng AI — kịch bản, hình ảnh, giọng đọc, nhạc nền và xuất video WebM ngay trong trình duyệt",
+  "description": "Studio chỉnh sửa ảnh bằng AI (Gemini & GPT Image): ảnh thẻ thông minh, ánh sáng AI, phục hồi ảnh cũ — chạy trong trình duyệt",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

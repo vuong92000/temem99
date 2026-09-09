@@ -1,4 +1,4 @@
-# 🌐 Hướng dẫn chạy VideoAI Studio trên GitHub
+# 🌐 Hướng dẫn chạy PhotoAI Studio trên GitHub
 
 > App là **100% front-end tĩnh** (mọi thứ chạy trong trình duyệt, không cần backend) nên lên GitHub là chuyện dễ — có **3 cách chạy trên GitHub**, không cần server riêng, không tốn phí.
 
@@ -16,7 +16,7 @@
 2. Dán toàn bộ nội dung sau vào ô soạn thảo:
 
 ```yaml
-# 🚀 Tự động deploy VideoAI Studio lên GitHub Pages
+# 🚀 Tự động deploy PhotoAI Studio lên GitHub Pages
 # Mỗi lần push vào main: chạy smoke-test rồi xuất bản public/ lên Pages.
 name: Deploy GitHub Pages
 
@@ -95,7 +95,7 @@ Nếu không muốn dùng workflow:
 2. **Settings** → **Pages** → **Source**: *Deploy from a branch* → Chọn nhánh **main** / thư mục **/docs** → **Save**.
 3. ~1 phút sau truy cập `https://vuong92000.github.io/temem99/`.
 
-> ⚠️ Lưu ý: app **phải dùng đường dẫn tương đối** (`css/style.css`, `library/…`) — repo này đã sửa sẵn. Nếu bạn thấy 404 trắng trang ở bản fork/cũ, kiểm tra lại `index.html` không được dùng `/css/...` với dấu `/` đầu.
+> ⚠️ Lưu ý: app **phải dùng đường dẫn tương đối** (`css/studio.css`, `js/…`) — repo này đã sửa sẵn. Nếu bạn thấy 404 trắng trang ở bản fork/cũ, kiểm tra lại `index.html` không được dùng `/css/...` với dấu `/` đầu.
 
 ---
 
@@ -133,10 +133,11 @@ Chi tiết xem [HUONG-DAN-CHAY.md](HUONG-DAN-CHAY.md).
 
 | Tính năng | Trên Pages | Ghi chú |
 |---|---|---|
-| Kịch bản AI, ảnh AI, giọng đọc AI | ✅ | Gọi trực tiếp từ trình duyệt tới Pollinations.ai — không cần server |
-| Chế độ offline (fallback) | ✅ | Khi dịch vụ AI đứt, app tự chuyển |
-| Lưu dự án (localStorage) | ✅ | Mỗi tên miền lưu riêng — dự án trên Pages khác dự án ở localhost |
-| Xuất video WebM | ✅ | Chạy hoàn toàn phía client |
+| Chỉnh ảnh AI (Gemini / GPT Image) | ✅ | Gọi trực tiếp từ trình duyệt bằng API key của bạn — không cần server |
+| Công cụ offline (cắt, nét, cân trắng, phóng 2×, tấm in) | ✅ | Chạy 100% bằng canvas trong trình duyệt |
+| Lịch sử & API key (localStorage) | ✅ | Mỗi tên miền lưu riêng — key trên Pages khác key ở localhost |
+| Tải ảnh PNG/JPG về máy | ✅ | Chạy hoàn toàn phía client |
+| Bản VideoAI cũ | ✅ | Vẫn xem được tại `/video-studio/` sau khi deploy |
 | `node server.js` | ❌ | Pages chỉ serve file tĩnh — dùng Codespaces (Cách 3) nếu cần server |
 
 ## 🔧 Xử lý sự cố

@@ -1,5 +1,5 @@
 /**
- * VideoAI Studio — máy chủ tĩnh không phụ thuộc thư viện ngoài.
+ * PhotoAI Studio — máy chủ tĩnh không phụ thuộc thư viện ngoài.
  * Chỉ dùng các module builtin của Node nên không cần `npm install`.
  *
  * Chạy:  node server.js   (hoặc: npm start)
@@ -41,6 +41,7 @@ function send(res, status, body, headers = {}) {
 function serveStatic(req, res) {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
   if (urlPath === '/') urlPath = '/index.html';
+  if (urlPath.endsWith('/')) urlPath += 'index.html';
 
   const filePath = path.normalize(path.join(PUBLIC, urlPath));
   // Chặn path traversal
@@ -68,7 +69,7 @@ function serveStatic(req, res) {
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/api/')) {
     if (req.url.startsWith('/api/health')) {
-      return send(res, 200, JSON.stringify({ ok: true, app: 'VideoAI Studio' }), {
+      return send(res, 200, JSON.stringify({ ok: true, app: 'PhotoAI Studio' }), {
         'Content-Type': 'application/json; charset=utf-8',
       });
     }
@@ -80,6 +81,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`✨ VideoAI Studio đang chạy tại:  http://localhost:${PORT}`);
+  console.log(`📸 PhotoAI Studio đang chạy tại:  http://localhost:${PORT}`);
   console.log(`   Thư mục tĩnh: ${PUBLIC}`);
 });

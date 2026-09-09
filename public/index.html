@@ -3,280 +3,506 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VideoAI Studio — Tạo video bằng AI</title>
-  <meta name="description" content="Tạo video từ một chủ đề: AI viết kịch bản, tạo hình ảnh, đọc lời bình, ghép nhạc nền và xuất video ngay trong trình duyệt.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <title>PhotoAI Studio — Chỉnh sửa ảnh bằng AI (Gemini & GPT)</title>
+  <meta name="description" content="Studio chỉnh sửa ảnh AI chuyên nghiệp: ảnh thẻ thông minh, ánh sáng AI, phục hồi ảnh cũ. Chạy online bằng API key Gemini / OpenAI của bạn.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/studio.css">
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo">🎬</span>
-      <div class="brand-text">
-        <h1>VideoAI <span>Studio</span></h1>
-        <p>Tạo video bằng AI ngay trong trình duyệt</p>
-      </div>
-    </div>
-    <div class="topbar-actions">
-      <span id="serviceChip" class="chip" title="Trạng thái các dịch vụ AI online">⏳ Đang kiểm tra AI…</span>
-      <button id="btnHelp" class="btn ghost">❓ Hướng dẫn</button>
-    </div>
-  </header>
-
-  <main>
-
-    <!-- ══════════ MÀN 1: TẠO MỚI ══════════ -->
-    <section id="screen-create" class="screen">
-      <div class="create-wrap">
-
-        <div id="restoreBanner" class="restore-banner hidden">
-          <span>📋 Phát hiện dự án đã lưu trước đó.</span>
-          <span class="restore-actions">
-            <button id="btnRestore" class="btn small primary">Khôi phục</button>
-            <button id="btnDiscardRestore" class="btn small ghost">Bỏ</button>
-          </span>
-        </div>
-
-        <div class="hero">
-          <h2>Tạo video từ <span class="grad">một chủ đề</span> — chỉ trong vài phút</h2>
-          <p>Nhập chủ đề (hoặc dán kịch bản sẵn). AI sẽ viết kịch bản, dựng hình, đọc lời bình và ghép nhạc nền.
-             Bạn xem trước, chỉnh sửa từng cảnh, rồi xuất video tải về máy.</p>
-        </div>
-
-        <div class="card form-card">
-          <div class="tabs" id="modeTabs">
-            <button class="tab active" data-mode="ai">✨ AI viết kịch bản</button>
-            <button class="tab" data-mode="manual">📝 Dán kịch bản có sẵn</button>
-          </div>
-
-          <label class="field">
-            <span id="labelTopic">Chủ đề video</span>
-            <textarea id="inputTopic" rows="4"
-              placeholder="Ví dụ: Trí tuệ nhân tạo và tương lai của nhân loại&#10;&#10;Mẹo: càng mô tả rõ bạn muốn nói về điều gì, kịch bản càng chuẩn."></textarea>
-          </label>
-
-          <div class="samples" id="sampleChips">
-            <span class="samples-label">Ý tưởng mẫu:</span>
-          </div>
-
-          <div class="grid-settings">
-            <label class="field">
-              <span>Số cảnh <b id="sceneCountVal">5</b></span>
-              <input type="range" id="inputSceneCount" min="3" max="8" value="5">
-            </label>
-
-            <label class="field">
-              <span>Tỉ lệ khung hình</span>
-              <div class="segmented" id="segAspect">
-                <button type="button" data-v="16:9" class="active">16:9 · YouTube</button>
-                <button type="button" data-v="9:16">9:16 · TikTok</button>
-                <button type="button" data-v="1:1">1:1 · Bài đăng</button>
-              </div>
-            </label>
-
-            <label class="field">
-              <span>Phong cách hình ảnh</span>
-              <select id="inputStyle">
-                <option value="cinematic">🎬 Điện ảnh — cinematic</option>
-                <option value="photo">📸 Nhiếp ảnh thực tế</option>
-                <option value="anime">🌸 Anime / minh họa</option>
-                <option value="watercolor">🎨 Màu nước mềm mại</option>
-                <option value="render3d">🧊 3D render hiện đại</option>
-                <option value="minimal">🔹 Tối giản flat design</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Giọng đọc lời bình</span>
-              <select id="inputVoice">
-                <option value="alloy">🟢 Alloy — AI, nữ, tự nhiên (online)</option>
-                <option value="nova">🟣 Nova — AI, nữ, trong trẻo (online)</option>
-                <option value="shimmer">✨ Shimmer — AI, nữ, dịu (online)</option>
-                <option value="echo">🔵 Echo — AI, nam, trầm (online)</option>
-                <option value="onyx">⚫ Onyx — AI, nam, sâu (online)</option>
-                <option value="fable">📜 Fable — AI, kể chuyện (online)</option>
-                <option value="browser">🖥️ Giọng đọc của trình duyệt (offline)</option>
-                <option value="none">🔇 Không có lời bình</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Hiệu ứng chuyển cảnh</span>
-              <select id="inputTransition">
-                <option value="crossfade">🔄 Mờ dần chồng nhau</option>
-                <option value="fade">⬛ Mờ dần qua đen</option>
-                <option value="slide">➡ Trượt sang phải</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="switches">
-            <label class="switch"><input type="checkbox" id="inputTitleCard" checked><i></i>Màn mở đầu</label>
-            <label class="switch"><input type="checkbox" id="inputEndCard" checked><i></i>Màn kết thúc</label>
-            <label class="switch"><input type="checkbox" id="inputMusic" checked><i></i>Nhạc nền</label>
-            <label class="switch"><input type="checkbox" id="inputWatermark" checked><i></i>Logo góc video</label>
-          </div>
-
-          <button id="btnCreate" class="btn primary xl">🚀 Tạo video</button>
-          <p class="hint">💡 Cần internet để dùng <b>ảnh AI</b> và <b>giọng đọc AI</b> (dịch vụ miễn phí của Pollinations.ai).
-             Mất mạng vẫn tạo được video với thư viện ảnh AI sẵn có, giọng đọc trình duyệt và nhạc nền tự sinh.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══════════ MÀN 2: STUDIO ══════════ -->
-    <section id="screen-studio" class="screen hidden">
-      <div class="studio">
-
-        <aside class="scenes-panel">
-          <div class="scenes-head">
-            <h3>Cảnh <span id="sceneBadge" class="badge">0</span></h3>
-            <button id="btnAddScene" class="btn small" title="Thêm một cảnh trống vào cuối">＋ Thêm</button>
-          </div>
-          <div id="sceneList" class="scene-list"></div>
-          <div class="scenes-foot">
-            <button id="btnBackCreate" class="btn ghost small">↩ Sửa thiết lập & kịch bản</button>
-          </div>
-        </aside>
-
-        <div class="stage">
-          <div class="stage-top">
-            <input id="projectTitle" class="title-input" placeholder="Tên video" maxlength="80">
-            <div class="stage-actions">
-              <select id="studioVoice" title="Giọng đọc">
-                <option value="alloy">🟢 Alloy</option>
-                <option value="nova">🟣 Nova</option>
-                <option value="shimmer">✨ Shimmer</option>
-                <option value="echo">🔵 Echo</option>
-                <option value="onyx">⚫ Onyx</option>
-                <option value="fable">📜 Fable</option>
-                <option value="browser">🖥️ Trình duyệt</option>
-                <option value="none">🔇 Không</option>
-              </select>
-              <button id="btnRegenVoice" class="btn small" title="Tạo lại giọng đọc AI cho tất cả các cảnh">🔊↻</button>
-              <label class="switch music-toggle" title="Nhạc nền"><input type="checkbox" id="studioMusic"><i>🎵</i></label>
-              <button id="btnExport" class="btn primary">⬇ Xuất video</button>
-            </div>
-          </div>
-
-          <div class="canvas-wrap" id="canvasWrap">
-            <canvas id="previewCanvas" width="1280" height="720"></canvas>
-            <button id="btnBigPlay" class="play-big" title="Phát (Space)">▶</button>
-          </div>
-
-          <div class="transport">
-            <button id="btnPlay" class="btn icon" title="Phát / Dừng (Space)">▶</button>
-            <span id="timeDisplay" class="time">0:00 / 0:00</span>
-            <div class="timeline" id="timeline" title="Nhấp để tua">
-              <div class="timeline-fill" id="timelineFill"></div>
-              <div class="ticks" id="timelineTicks"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <!-- ══════════ OVERLAY BẬN ══════════ -->
-  <div id="busyOverlay" class="overlay hidden">
-    <div class="busy-card">
-      <div class="spinner"></div>
-      <h3 id="busyTitle">Đang tạo video…</h3>
-      <p id="busyText">…</p>
-      <div class="progress"><div id="busyBar"></div></div>
+<!-- ═══════════ THANH TRÊN ═══════════ -->
+<header class="topbar">
+  <div class="brand" id="brandHome" title="Về trang tổng quan">
+    <span class="logo">📸</span>
+    <div class="brand-text">
+      <h1>PhotoAI <span>Studio</span></h1>
+      <p>Chỉnh sửa ảnh bằng AI</p>
     </div>
   </div>
-
-  <!-- ══════════ MODAL XUẤT VIDEO ══════════ -->
-  <div id="exportModal" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-head"><h3>⬇ Xuất video</h3><button class="btn icon" data-close>✕</button></div>
-      <div class="modal-body">
-
-        <div id="exportSetup">
-          <div class="kv"><span>Độ phân giải</span><b id="expRes">—</b></div>
-          <div class="kv"><span>Thời lượng</span><b id="expDur">—</b></div>
-          <div class="kv"><span>Số cảnh</span><b id="expScenes">—</b></div>
-          <div class="kv"><span>Lời bình</span><b id="expVoice">—</b></div>
-          <div class="kv"><span>Nhạc nền</span><b id="expMusic">—</b></div>
-          <label class="switch"><input type="checkbox" id="expMonitor" checked><i></i>Phát âm thanh trong khi quay</label>
-          <p class="hint">⚠️ Video được ghi theo <b>thời gian thực</b> — hãy giữ tab này mở và hiển thị cho đến khi hoàn tất.</p>
-          <button id="btnExportStart" class="btn primary xl">⏺ Bắt đầu quay &amp; xuất</button>
-        </div>
-
-        <div id="exportProgress" class="hidden">
-          <p id="expStatus">Đang chuẩn bị…</p>
-          <div class="progress"><div id="expBar"></div></div>
-          <p class="hint center">🎥 Đang quay video… bạn có thể theo dõi trên khung hình.</p>
-        </div>
-
-        <div id="exportResult" class="hidden">
-          <video id="expVideo" controls playsinline></video>
-          <button id="btnDownload" class="btn primary xl">⬇ Tải video về máy</button>
-          <p class="hint center" id="expHint"></p>
-        </div>
-
-      </div>
+  <div class="topbar-center">
+    <div class="seg seg-provider" id="providerSeg" title="Chọn engine AI để xử lý ảnh">
+      <button data-p="gemini" class="active">✨ Gemini</button>
+      <button data-p="openai">🤖 GPT Image</button>
     </div>
+    <select id="modelSelect" class="select" title="Chọn model AI"></select>
   </div>
+  <div class="topbar-actions">
+    <span id="keyChip" class="chip warn" title="Trạng thái API key">🔑 Chưa có key</span>
+    <button id="btnKeys" class="btn small primary">🔑 API Key</button>
+    <button id="btnHelpTop" class="btn small ghost">❓</button>
+  </div>
+</header>
 
-  <!-- ══════════ MODAL THU ÂM ══════════ -->
-  <div id="recordModal" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-head"><h3>🎙 Thu giọng đọc cho cảnh này</h3><button class="btn icon" data-close>✕</button></div>
-      <div class="modal-body">
-        <p class="hint">Đọc đoạn văn bên dưới với nhịp nói bình thường. Bạn có thể thu lại nhiều lần tới khi ưng ý.</p>
-        <div id="recText" class="rec-text"></div>
-        <div class="rec-status">
-          <span id="recTimer">0:00</span>
-          <span id="recDot" class="rec-dot hidden"></span>
-        </div>
-        <div class="rec-actions">
-          <button id="btnRecStart" class="btn">⏺ Bắt đầu thu</button>
-          <button id="btnRecStop" class="btn danger hidden">⏹ Dừng</button>
-          <button id="btnRecPlay" class="btn hidden">▶ Nghe lại</button>
-          <button id="btnRecSave" class="btn primary hidden">💾 Dùng bản thu này</button>
-        </div>
-      </div>
+<div class="layout">
+  <!-- ═══════════ MENU TRÁI ═══════════ -->
+  <nav class="sidebar">
+    <button class="nav-btn active" data-tool="home"><span class="nav-ico">🏠</span><span class="nav-txt">Tổng quan</span></button>
+    <button class="nav-btn" data-tool="id"><span class="nav-ico">🪪</span><span class="nav-txt">Ảnh thẻ AI</span></button>
+    <button class="nav-btn" data-tool="light"><span class="nav-ico">💡</span><span class="nav-txt">Ánh sáng AI</span></button>
+    <button class="nav-btn" data-tool="restore"><span class="nav-ico">🕰️</span><span class="nav-txt">Phục hồi ảnh cũ</span></button>
+    <button class="nav-btn" data-tool="history"><span class="nav-ico">🖼️</span><span class="nav-txt">Lịch sử</span><span id="histCount" class="nav-badge hidden">0</span></button>
+    <div class="sidebar-foot">
+      <button id="btnSettings" class="btn small ghost wide">⚙️ Cài đặt API</button>
+      <button id="btnGuide" class="btn small ghost wide">❓ Hướng dẫn</button>
     </div>
-  </div>
+  </nav>
 
-  <!-- ══════════ MODAL CHỌN ẢNH THƯ VIỆN ══════════ -->
-  <div id="libModal" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-head"><h3>🖼 Chọn ảnh nền cho cảnh</h3><button class="btn icon" data-close>✕</button></div>
-      <div class="modal-body">
-        <div id="libGrid" class="lib-grid"></div>
+  <!-- ═══════════ PANEL TÙY CHỌN ═══════════ -->
+  <aside class="panel">
+
+    <!-- ── TỔNG QUAN ── -->
+    <section id="panel-home" class="tool-panel">
+      <h2>👋 Chào mừng đến PhotoAI Studio</h2>
+      <p class="muted">Studio chỉnh sửa ảnh AI chuyên nghiệp ngay trong trình duyệt. Tải ảnh lên, chọn công cụ, AI xử lý — tải kết quả về máy.</p>
+      <div class="home-cards">
+        <button class="home-card" data-goto="id">
+          <span class="hc-ico">🪪</span>
+          <b>Ảnh thẻ thông minh</b>
+          <span class="muted small">Thay trang phục, phông nền, kiểu tóc bằng AI. Xuất tấm in 10×15 chuẩn tiệm ảnh.</span>
+        </button>
+        <button class="home-card" data-goto="light">
+          <span class="hc-ico">💡</span>
+          <b>Ánh sáng AI</b>
+          <span class="muted small">10 kiểu sáng studio chuyên nghiệp + tự mô tả. AI gợi ý ánh sáng hợp khuôn mặt.</span>
+        </button>
+        <button class="home-card" data-goto="restore">
+          <span class="hc-ico">🕰️</span>
+          <b>Phục hồi ảnh cũ</b>
+          <span class="muted small">Lên màu, xóa xước, vẽ lại tóc & nền, giữ nguyên khuôn mặt 100%.</span>
+        </button>
       </div>
-    </div>
-  </div>
-
-  <!-- ══════════ MODAL HƯỚNG DẪN ══════════ -->
-  <div id="helpModal" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-head"><h3>❓ Hướng dẫn nhanh</h3><button class="btn icon" data-close>✕</button></div>
-      <div class="modal-body help-body">
-        <ol>
-          <li><b>Nhập chủ đề</b> (hoặc dán kịch bản sẵn) ở màn đầu, chọn tỉ lệ khung, phong cách ảnh, giọng đọc → <b>Tạo video</b>.</li>
-          <li>AI sẽ lần lượt: viết kịch bản thành các cảnh → đọc lời bình → tạo hình ảnh cho từng cảnh.
-              Nếu một dịch vụ online không dùng được, app tự chuyển sang phương án dự phòng (ảnh thư viện, giọng trình duyệt…).</li>
-          <li>Ở Studio: <b>nhấp vào textarea để sửa lời bình</b> của từng cảnh; các nút nhỏ bên dưới mỗi cảnh cho phép
-              tạo lại ảnh AI, chọn ảnh thư viện, tải ảnh riêng, sinh ảnh trừu tượng, tạo lại giọng đọc, thu giọng của bạn, đổi thứ tự, xoá cảnh.</li>
-          <li>Nhấn <b>▶</b> (hoặc phím Space) để xem trước. Nhấp vào thanh thời gian để tua.</li>
-          <li>Nhấn <b>⬇ Xuất video</b> → video định dạng <b>WebM</b> sẽ được tải về (mở bằng Chrome/Edge, hoặc chuyển sang MP4 bằng công cụ chuyển đổi nếu cần).</li>
+      <div class="card">
+        <h3>🚀 4 bước sử dụng</h3>
+        <ol class="steps">
+          <li>Nhập <b>API key</b> Gemini (miễn phí) hoặc OpenAI trong <b>⚙️ Cài đặt API</b>.</li>
+          <li><b>Tải ảnh lên</b> — kéo thả, dán (Ctrl+V) hoặc dùng ảnh mẫu.</li>
+          <li>Chọn công cụ, chỉnh tùy chọn → nhấn <b>⚡ Xử lý bằng AI</b>.</li>
+          <li>Kéo thanh <b>so sánh Trước/Sau</b>, ưng ý thì <b>tải về</b>.</li>
         </ol>
-        <p class="hint">Dự án được tự động lưu vào trình duyệt (trừ giọng đọc & ảnh tải lên) — lần sau vào lại sẽ có nút Khôi phục.</p>
+      </div>
+      <div class="card" id="homeKeyBox">
+        <h3>🔑 Trạng thái API</h3>
+        <p class="muted small" id="homeKeyText">Chưa nhập API key. Nhấn “Cài đặt API” để bắt đầu.</p>
+        <button class="btn small primary" id="btnHomeKeys">⚙️ Mở Cài đặt API</button>
+      </div>
+      <div class="card">
+        <h3>🖼️ Thử ngay với ảnh mẫu</h3>
+        <div class="sample-row" id="homeSamples"></div>
+      </div>
+    </section>
+
+    <!-- ── ẢNH THẺ AI ── -->
+    <section id="panel-id" class="tool-panel hidden">
+      <h2>🪪 Ảnh thẻ thông minh</h2>
+      <p class="muted small">AI thay trang phục, phông nền, kiểu tóc — <b>giữ nguyên 100% khuôn mặt</b>. Nên dùng ảnh chân dung rõ mặt, nền đơn giản.</p>
+
+      <div class="field">
+        <label>Giới tính trang phục & tóc</label>
+        <div class="seg" id="idGender">
+          <button data-g="all" class="active">Tất cả</button>
+          <button data-g="m">👨 Nam</button>
+          <button data-g="f">👩 Nữ</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>🎨 Phông nền</label>
+        <div class="opt-grid" id="idBgGrid"></div>
+        <div id="idBgColorWrap" class="hidden row gap">
+          <input type="color" id="idBgColor" value="#2f6fed" title="Chọn màu nền">
+          <span class="muted small">Chọn màu nền tùy ý</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>👔 Trang phục AI</label>
+        <div class="opt-list" id="idOutfitGrid"></div>
+        <textarea id="idOutfitCustom" class="textarea hidden" rows="2" placeholder="Mô tả trang phục, vd: áo sơ mi trắng + áo vest kẻ sọc xám…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>💇 Kiểu tóc AI</label>
+        <div class="opt-list" id="idHairGrid"></div>
+        <textarea id="idHairCustom" class="textarea hidden" rows="2" placeholder="Mô tả kiểu tóc, vd: tóc ngắn vuốt ngược gọn gàng…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Tinh chỉnh</label>
+        <label class="check"><input type="checkbox" id="idSmooth" checked> <span>Làm mịn da nhẹ, xóa mụn tạm thời</span></label>
+        <label class="check"><input type="checkbox" id="idStraighten" checked> <span>Chỉnh mặt chính diện, ngay ngắn</span></label>
+      </div>
+
+      <div class="field">
+        <label for="idExtra">➕ Yêu cầu thêm <span class="muted small">(không bắt buộc)</span></label>
+        <textarea id="idExtra" class="textarea" rows="2" placeholder="vd: đeo kính cận gọng đen, nụ cười nhẹ…"></textarea>
+      </div>
+
+      <div class="field row gap wrap">
+        <button id="btnPrintSheet" class="btn ghost flex1">🖨️ Tấm in ảnh thẻ</button>
+        <button id="btnIdCrop" class="btn ghost flex1">✂️ Cắt khung 3×4 / 4×6</button>
+      </div>
+      <p class="tip">💡 <b>Mẹo:</b> sau khi AI tạo xong, dùng “Tấm in” để xếp nhiều ảnh 3×4 / 4×6 lên khổ 10×15 đem ra tiệm in.</p>
+    </section>
+
+    <!-- ── ÁNH SÁNG AI ── -->
+    <section id="panel-light" class="tool-panel hidden">
+      <h2>💡 Chỉnh ánh sáng AI</h2>
+      <p class="muted small">Chọn 1 trong <b>10 kiểu sáng studio</b> hoặc tự mô tả. AI chỉ đổi ánh sáng — <b>giữ nguyên mặt, dáng, quần áo</b>.</p>
+
+      <div class="field">
+        <label>✨ 10 kiểu ánh sáng chuyên nghiệp</label>
+        <div class="light-grid" id="lightGrid"></div>
+      </div>
+
+      <div class="field">
+        <label>Cường độ hiệu ứng</label>
+        <div class="seg" id="lightIntensity">
+          <button data-v="subtle">Nhẹ</button>
+          <button data-v="normal" class="active">Vừa</button>
+          <button data-v="strong">Mạnh</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check"><input type="checkbox" id="lightKeepSkin" checked> <span>Giữ màu da tự nhiên</span></label>
+      </div>
+
+      <div class="field">
+        <label for="lightCustom">✍️ Tự mô tả ánh sáng <span class="muted small">(kết hợp với preset đã chọn, hoặc để riêng)</span></label>
+        <textarea id="lightCustom" class="textarea" rows="2" placeholder="vd: ánh nến ấm áp từ bên trái, nền tối dần…"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="lightExtra">➕ Yêu cầu thêm</label>
+        <textarea id="lightExtra" class="textarea" rows="2" placeholder="vd: thêm flare nhẹ góc phải…"></textarea>
+      </div>
+
+      <div class="field">
+        <button id="btnSuggest" class="btn ghost wide">🤖 AI gợi ý ánh sáng hợp mặt nhất</button>
+        <p class="muted small" id="suggestOut" style="margin-top:8px"></p>
+      </div>
+      <p class="tip">💡 <b>Mẹo:</b> <b>Loop</b> hợp mọi khuôn mặt · <b>Rembrandt/Low-key</b> cho nam cá tính · <b>Butterfly/High-key</b> cho beauty nữ.</p>
+    </section>
+
+    <!-- ── PHỤC HỒI ẢNH CŨ ── -->
+    <section id="panel-restore" class="tool-panel hidden">
+      <h2>🕰️ Phục hồi ảnh cũ</h2>
+      <p class="muted small">Bộ công cụ phục hồi chuyên nghiệp: lên màu, xóa hư hỏng, vẽ lại tóc & nền — <b>giữ nguyên khuôn mặt & thần thái</b>.</p>
+
+      <div class="field">
+        <label>🧰 Tính năng phục hồi AI</label>
+        <label class="check"><input type="checkbox" id="rsColorize" checked> <span>🎨 Lên màu ảnh đen trắng / sepia</span></label>
+        <label class="check"><input type="checkbox" id="rsRepair" checked> <span>🩹 Xóa vết xước, ố, rách, mốc</span></label>
+        <label class="check"><input type="checkbox" id="rsFace" checked> <span>🙂 Tăng chi tiết khuôn mặt (giữ danh tính)</span></label>
+        <label class="check"><input type="checkbox" id="rsHair"> <span>💇 Vẽ lại tóc rõ nét, có hồn</span></label>
+        <label class="check"><input type="checkbox" id="rsDenoise" checked> <span>🧹 Khử nhiễu, hết phai màu, cân sáng</span></label>
+        <label class="check"><input type="checkbox" id="rsUpscaleNote" checked> <span>🔍 Xuất chi tiết sắc nét tối đa</span></label>
+      </div>
+
+      <div class="field">
+        <label for="rsBgMode">🏞️ Phông nền</label>
+        <select id="rsBgMode" class="select wide">
+          <option value="keep">Giữ nguyên nền (chỉ làm sạch)</option>
+          <option value="clean">Làm sạch + mờ nhẹ nền</option>
+          <option value="studio">Vẽ lại nền studio trang nhã</option>
+          <option value="outdoor">Vẽ lại nền ngoại cảnh tự nhiên</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Mức độ phục hồi</label>
+        <div class="seg" id="rsStrength">
+          <button data-v="light">Nhẹ (giữ chất xưa)</button>
+          <button data-v="moderate" class="active">Vừa</button>
+          <button data-v="strong">Mạnh (như ảnh mới)</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="rsExtra">➕ Yêu cầu thêm</label>
+        <textarea id="rsExtra" class="textarea" rows="2" placeholder="vd: làm rõ mặt người đứng giữa, bỏ khung viền…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>⚡ Công cụ nhanh (offline, không cần key)</label>
+        <div class="row gap wrap">
+          <button id="btnOfflineSharpen" class="btn ghost small flex1">🔍 Tăng nét</button>
+          <button id="btnOfflineWB" class="btn ghost small flex1">⚖️ Cân trắng</button>
+          <button id="btnOfflineUpscale" class="btn ghost small flex1">⤢ Phóng 2×</button>
+        </div>
+        <button id="btnMakeOldSample" class="btn ghost small wide" style="margin-top:8px">🎞️ Tạo ảnh cũ mẫu từ ảnh hiện tại (để thử)</button>
+      </div>
+      <p class="tip">💡 <b>Mẹo:</b> ảnh rách nặng nên chọn mức <b>Mạnh</b> + Vẽ lại nền. Có thể nhấn Xử lý nhiều lần, mỗi lần AI hoàn thiện thêm.</p>
+    </section>
+
+    <!-- ── LỊCH SỬ ── -->
+    <section id="panel-history" class="tool-panel hidden">
+      <h2>🖼️ Lịch sử kết quả</h2>
+      <p class="muted small">Mọi ảnh AI đã tạo trong trình duyệt này (tối đa 12 ảnh gần nhất).</p>
+      <div class="field row gap">
+        <button id="btnClearHistory" class="btn ghost small">🗑️ Xóa tất cả</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+  </aside>
+
+  <!-- ═══════════ SÂN KHẤU ═══════════ -->
+  <main class="stage">
+    <!-- Trạng thái chưa có ảnh -->
+    <div id="dropzone" class="dropzone">
+      <div class="dz-inner">
+        <div class="dz-icon">🖼️</div>
+        <h2>Kéo & thả ảnh vào đây</h2>
+        <p class="muted">hoặc dán ảnh bằng <kbd>Ctrl</kbd>+<kbd>V</kbd> · JPG, PNG, WebP</p>
+        <div class="row gap wrap center">
+          <button id="btnUpload" class="btn primary big">📤 Tải ảnh lên</button>
+          <input type="file" id="fileInput" accept="image/*" class="hidden">
+        </div>
+        <div class="dz-samples">
+          <span class="muted small">Thử với ảnh mẫu:</span>
+          <div class="sample-row" id="dzSamples"></div>
+        </div>
       </div>
     </div>
+
+    <!-- Không gian làm việc -->
+    <div id="workspace" class="workspace hidden">
+      <div class="stage-toolbar">
+        <div class="st-left">
+          <span id="toolBadge" class="badge">🪪 Ảnh thẻ</span>
+          <span id="fileMeta" class="muted small"></span>
+        </div>
+        <div class="st-right">
+          <button id="btnCrop" class="tbtn" title="Cắt khung ảnh (3×4 / 4×6 / vuông)">✂️</button>
+          <button id="btnFilters" class="tbtn" title="Chỉnh sáng / tương phản / bão hòa">🎨</button>
+          <span class="tsep"></span>
+          <button id="zoomOut" class="tbtn" title="Thu nhỏ">−</button>
+          <span id="zoomLabel" class="zoom-label" title="Mức zoom">Vừa</span>
+          <button id="zoomIn" class="tbtn" title="Phóng to">+</button>
+          <button id="zoomFit" class="tbtn" title="Vừa khung hình">⤢</button>
+          <span class="tsep"></span>
+          <button id="btnCompare" class="tbtn active" title="Bật/tắt so sánh Trước–Sau">◧</button>
+          <button id="btnUndo" class="tbtn hidden" title="Hoàn tác thao tác cắt vừa rồi">↩️</button>
+          <span class="tsep"></span>
+          <button id="btnUseSource" class="tbtn" title="Dùng kết quả làm ảnh gốc để chỉnh tiếp">🔁</button>
+          <button id="btnNewImage" class="tbtn" title="Tải ảnh khác">📤</button>
+          <button id="btnDlPng" class="tbtn" title="Tải về PNG">⬇️ PNG</button>
+          <button id="btnDlJpg" class="tbtn" title="Tải về JPG">⬇️ JPG</button>
+        </div>
+      </div>
+
+      <div id="stageView" class="stage-view">
+        <div id="zoomBox" class="zoombox">
+          <img id="imgAfter" class="layer" alt="Kết quả">
+          <img id="imgBefore" class="layer top" alt="Ảnh gốc">
+          <div id="cmpHandle" class="cmp-handle hidden"><div class="cmp-knob">⇔</div></div>
+          <span id="cmpLabelB" class="cmp-label left hidden">TRƯỚC</span>
+          <span id="cmpLabelA" class="cmp-label right hidden">SAU</span>
+          <img id="cropImg" class="layer hidden" alt="Cắt ảnh">
+          <div id="cropFrame" class="crop-frame hidden"><div class="crop-grid"></div></div>
+        </div>
+      </div>
+
+      <!-- Popover chỉnh màu -->
+      <div id="filtersPop" class="filters-pop hidden">
+        <h4>🎨 Chỉnh màu nhanh <span class="muted small">(áp dụng khi tải về)</span></h4>
+        <label>Sáng <input type="range" id="fB" min="50" max="150" value="100"><b id="fBv">100%</b></label>
+        <label>Tương phản <input type="range" id="fC" min="50" max="150" value="100"><b id="fCv">100%</b></label>
+        <label>Bão hòa <input type="range" id="fS" min="0" max="200" value="100"><b id="fSv">100%</b></label>
+        <button id="btnFilterReset" class="btn small ghost">↺ Đặt lại</button>
+      </div>
+
+      <!-- Thanh cắt khung -->
+      <div id="cropBar" class="cropbar hidden">
+        <span class="muted small">✂️ Kéo ảnh để căn · Khung:</span>
+        <div class="seg" id="cropAspect">
+          <button data-ratio="0.75" class="active">3×4</button>
+          <button data-ratio="0.6667">4×6</button>
+          <button data-ratio="1">1×1</button>
+        </div>
+        <label class="muted small">Zoom <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1"></label>
+        <button id="btnCropApply" class="btn small primary">✓ Áp dụng</button>
+        <button id="btnCropCancel" class="btn small ghost">Hủy</button>
+      </div>
+
+      <!-- Thanh prompt + nút chạy -->
+      <div class="actionbar">
+        <div class="prompt-row">
+          <button id="promptToggle" class="btn small ghost">📝 Xem / sửa prompt gửi AI ▾</button>
+          <span id="modelInfo" class="muted small"></span>
+        </div>
+        <div id="promptWrap" class="prompt-wrap hidden">
+          <textarea id="promptText" class="textarea mono" rows="5" spellcheck="false"></textarea>
+          <p class="muted small">Prompt tiếng Anh giúp AI hiểu chính xác hơn. Bạn có thể sửa trực tiếp trước khi chạy.</p>
+        </div>
+        <button id="btnGenerate" class="btn primary big wide">⚡ Xử lý bằng AI</button>
+        <p class="muted small center" id="genHint">Tải ảnh lên để bắt đầu.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="footbar">
+  <span>🔒 Ảnh & API key chỉ lưu trong trình duyệt của bạn, không qua máy chủ trung gian.</span>
+  <span><a href="video-studio/index.html">🎬 VideoAI Studio (bản cũ)</a></span>
+</footer>
+
+<!-- ═══════════ MODAL CÀI ĐẶT API ═══════════ -->
+<div id="modalSettings" class="modal hidden">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3>⚙️ Cài đặt API & Model AI</h3>
+      <button class="btn small ghost" data-close="modalSettings">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="api-cols">
+        <div class="card">
+          <h3>✨ Google Gemini <span class="pill free">Miễn phí</span></h3>
+          <p class="muted small">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → “Create API key”.</p>
+          <label class="field"><span>Gemini API key</span>
+            <div class="row gap">
+              <input type="password" id="setGemKey" class="input flex1" placeholder="AIza…" autocomplete="off">
+              <button id="setGemShow" class="btn small ghost">👁️</button>
+            </div>
+          </label>
+          <label class="field"><span>Model ảnh Gemini</span>
+            <select id="setGemModel" class="select wide"></select>
+          </label>
+          <label class="field"><span>Hoặc nhập tên model khác <span class="muted small">(để trống nếu dùng danh sách)</span></span>
+            <input id="setGemCustom" class="input wide" placeholder="vd: gemini-2.5-flash-image" autocomplete="off">
+          </label>
+          <div class="row gap">
+            <button id="btnTestGem" class="btn small ghost">🔌 Kiểm tra kết nối</button>
+            <span id="gemStatus" class="muted small"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🤖 OpenAI GPT Image <span class="pill pay">Trả phí</span></h3>
+          <p class="muted small">Lấy key tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> (cần nạp credit).</p>
+          <label class="field"><span>OpenAI API key</span>
+            <div class="row gap">
+              <input type="password" id="setOaiKey" class="input flex1" placeholder="sk-…" autocomplete="off">
+              <button id="setOaiShow" class="btn small ghost">👁️</button>
+            </div>
+          </label>
+          <label class="field"><span>Model GPT Image</span>
+            <select id="setOaiModel" class="select wide"></select>
+          </label>
+          <label class="field"><span>Hoặc nhập tên model khác</span>
+            <input id="setOaiCustom" class="input wide" placeholder="vd: gpt-image-1" autocomplete="off">
+          </label>
+          <div class="row gap wrap">
+            <label class="field flex1"><span>Kích thước</span><select id="setOaiSize" class="select wide"></select></label>
+            <label class="field flex1"><span>Chất lượng</span><select id="setOaiQuality" class="select wide"></select></label>
+          </div>
+          <label class="field"><span>Giữ chi tiết ảnh gốc (input fidelity)</span>
+            <select id="setOaiFidelity" class="select wide">
+              <option value="high">Cao — giữ mặt & chi tiết tốt nhất</option>
+              <option value="low">Thấp — sáng tạo tự do hơn</option>
+              <option value="auto">Tự động</option>
+            </select>
+          </label>
+          <div class="row gap">
+            <button id="btnTestOai" class="btn small ghost">🔌 Kiểm tra kết nối</button>
+            <span id="oaiStatus" class="muted small"></span>
+          </div>
+        </div>
+      </div>
+      <p class="tip">🔒 Key được lưu <b>chỉ trong trình duyệt này</b> (localStorage). Không dùng chung máy tính lạ. Xóa key bất cứ lúc nào bằng cách xóa nội dung ô và lưu.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="modalSettings">Đóng</button>
+      <button id="btnSaveKeys" class="btn primary">💾 Lưu cài đặt</button>
+    </div>
   </div>
+</div>
 
-  <div id="toasts" class="toasts"></div>
+<!-- ═══════════ MODAL HƯỚNG DẪN ═══════════ -->
+<div id="modalHelp" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>❓ Hướng dẫn sử dụng</h3>
+      <button class="btn small ghost" data-close="modalHelp">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>1️⃣ Lấy API key</h4>
+      <ul>
+        <li><b>Gemini (miễn phí, khuyên dùng):</b> vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → đăng nhập Google → <i>Create API key</i> → copy key dán vào ⚙️ Cài đặt API.</li>
+        <li><b>OpenAI GPT (trả phí, ảnh rất đẹp):</b> vào <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> → tạo key (đầu <i>sk-</i>) → nạp credit → dán vào Cài đặt.</li>
+      </ul>
+      <h4>2️⃣ Quy trình chỉnh ảnh</h4>
+      <ul>
+        <li>Tải ảnh: kéo-thả, <b>Ctrl+V</b> dán ảnh chụp màn hình, hoặc dùng ảnh mẫu.</li>
+        <li>Chọn engine <b>✨ Gemini / 🤖 GPT</b> trên thanh trên cùng.</li>
+        <li>Chọn công cụ ở menu trái, chỉnh tùy chọn, nhấn <b>⚡ Xử lý bằng AI</b>.</li>
+        <li>Kéo thanh <b>⇔</b> để so sánh Trước–Sau. Nhấn <b>🔁</b> để lấy kết quả chỉnh tiếp nhiều bước.</li>
+      </ul>
+      <h4>3️⃣ Mẹo từng công cụ</h4>
+      <ul>
+        <li><b>🪪 Ảnh thẻ:</b> ảnh gốc càng rõ mặt càng đẹp. Sau khi tạo, dùng <b>🖨️ Tấm in</b> để in khổ 10×15.</li>
+        <li><b>💡 Ánh sáng:</b> thử nút <b>🤖 AI gợi ý</b> để máy tự chọn kiểu sáng hợp mặt.</li>
+        <li><b>🕰️ Phục hồi:</b> ảnh nát nặng → mức <b>Mạnh</b> + chạy 2–3 lần, mỗi lần 1 tính năng.</li>
+      </ul>
+      <h4>⌨️ Phím tắt</h4>
+      <ul>
+        <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd>: chạy AI · <kbd>Ctrl</kbd>+<kbd>V</kbd>: dán ảnh · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>: đổi công cụ</li>
+      </ul>
+    </div>
+    <div class="modal-foot"><button class="btn primary" data-close="modalHelp">Đã hiểu!</button></div>
+  </div>
+</div>
 
-  <script type="module" src="js/main.js"></script>
+<!-- ═══════════ MODAL TẤM IN ═══════════ -->
+<div id="modalPrint" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🖨️ Tấm in ảnh thẻ</h3>
+      <button class="btn small ghost" data-close="modalPrint">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="row gap wrap">
+        <label class="field flex1"><span>Cỡ ảnh thẻ</span>
+          <select id="printPhoto" class="select wide">
+            <option value="3x4">3×4 cm</option>
+            <option value="4x6">4×6 cm</option>
+          </select>
+        </label>
+        <label class="field flex1"><span>Khổ giấy</span>
+          <select id="printPaper" class="select wide">
+            <option value="10x15">10×15 cm (khuyên dùng)</option>
+            <option value="13x18">13×18 cm</option>
+            <option value="A4">A4 (21×29.7 cm)</option>
+          </select>
+        </label>
+      </div>
+      <p class="muted small" id="printMeta"></p>
+      <img id="printPreview" class="print-preview" alt="Xem trước tấm in">
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="modalPrint">Đóng</button>
+      <button id="btnPrintDownload" class="btn primary">⬇️ Tải tấm in (300 DPI)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ OVERLAY ĐANG CHẠY AI ═══════════ -->
+<div id="busyOverlay" class="busy hidden">
+  <div class="busy-box">
+    <div class="spinner"></div>
+    <h3 id="busyText">AI đang xử lý ảnh…</h3>
+    <p class="muted"><span id="busyTimer">0s</span> · <span id="busyTip"></span></p>
+    <button id="btnCancel" class="btn ghost">✕ Hủy</button>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="js/presets.js"></script>
+<script src="js/api.js"></script>
+<script src="js/image.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

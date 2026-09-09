@@ -1,155 +1,114 @@
-# 📖 Hướng dẫn chạy & sử dụng VideoAI Studio
+# 📖 Hướng dẫn chạy & sử dụng PhotoAI Studio
 
-> **VideoAI Studio** — ứng dụng tạo video bằng AI chạy hoàn toàn trong trình duyệt: nhập một chủ đề → AI viết kịch bản → dựng hình từng cảnh → đọc lời bình → ghép nhạc nền → xuất video tải về máy. **Không cần API key, không cần cài thư viện.**
+> **PhotoAI Studio** — studio chỉnh sửa ảnh bằng AI trong trình duyệt: **ảnh thẻ thông minh → ánh sáng AI → phục hồi ảnh cũ**, chạy online bằng API key Gemini / OpenAI của bạn. **Không cần cài thư viện.**
 
 ---
 
-## 1. Yêu cầu hệ thống
+## A. Chạy app (2 phút)
 
-| Thành phần | Yêu cầu | Ghi chú |
+### Cách 1 — Chạy trên máy (khuyến nghị)
+
+1. Cài [Node.js](https://nodejs.org) bản 16 trở lên (bấm Next liên tục là xong).
+2. Mở terminal tại thư mục repo, gõ:
+
+   ```bash
+   node server.js        # hoặc: npm start
+   ```
+
+3. Thấy dòng `📸 PhotoAI Studio đang chạy tại: http://localhost:3000` → mở trình duyệt vào địa chỉ đó.
+
+### Cách 2 — Chạy online trên GitHub
+
+Không cài gì cả — xem [HUONG-DAN-GITHUB.md](HUONG-DAN-GITHUB.md) (Pages / Codespaces).
+
+---
+
+## B. Nhập API key (bắt buộc để chạy AI)
+
+Chi tiết từng bước có trong **[HUONG-DAN-API-KEY.md](HUONG-DAN-API-KEY.md)**. Tóm tắt:
+
+1. **Gemini (miễn phí):** vào https://aistudio.google.com/apikey → *Create API key* → copy.
+2. Trong app, nhấn **🔑 API Key** (góc phải) → dán key vào ô Gemini → **💾 Lưu**.
+3. (Tùy chọn) Thêm key OpenAI nếu muốn dùng GPT Image cho ảnh đẹp hơn.
+
+> Nhấn **🔌 Kiểm tra kết nối** để chắc chắn key hợp lệ trước khi dùng.
+
+---
+
+## C. Quy trình chỉnh ảnh
+
+### Bước 1️⃣ — Tải ảnh lên
+
+- Kéo-thả file vào khung giữa, **Ctrl+V** dán ảnh chụp màn hình, hoặc bấm **📤 Tải ảnh lên**.
+- Muốn thử nhanh: bấm 1 trong 4 **ảnh mẫu** dưới khung tải.
+
+### Bước 2️⃣ — Chọn engine AI (thanh trên cùng)
+
+- **✨ Gemini**: nhanh, miễn phí, đủ đẹp cho hầu hết nhu cầu.
+- **🤖 GPT Image**: trả phí, chất lượng rất cao (chọn *Chất lượng: Cao* trong Cài đặt khi cần ảnh “đỉnh”).
+
+### Bước 3️⃣ — Chọn công cụ ở menu trái
+
+| Công cụ | Làm gì | Mẹo |
 |---|---|---|
-| **Node.js** | ≥ 16 | [tải tại nodejs.org](https://nodejs.org) — kiểm tra bằng `node -v` |
-| **Trình duyệt** | Chrome / Edge / Safari bản mới | Cần hỗ trợ Canvas, Web Audio, MediaRecorder (đều có sẵn) |
-| **Internet** | Không bắt buộc | Có mạng: dùng AI online (kịch bản, ảnh, giọng đọc). Mất mạng: app **tự chuyển sang chế độ dự phòng offline** |
+| 🪪 **Ảnh thẻ AI** | Chọn nền → trang phục → kiểu tóc → **⚡ Tạo ảnh thẻ AI** | Ảnh gốc rõ mặt, nền đơn giản thì AI làm đẹp nhất. Xong dùng **🖨️ Tấm in** xếp ảnh 3×4/4×6 lên khổ 10×15. |
+| 💡 **Ánh sáng AI** | Chọn 1/10 kiểu sáng (+ tự mô tả) → **⚡ Áp dụng** | Bấm **🤖 AI gợi ý** để máy tự chọn kiểu sáng hợp mặt. |
+| 🕰️ **Phục hồi ảnh cũ** | Tick tính năng (lên màu, xóa xước…) → **⚡ Phục hồi** | Ảnh nát nặng: chọn mức **Mạnh**, chạy 2–3 lần. Không có key vẫn dùng được Tăng nét / Cân trắng / Phóng 2× (offline). |
 
-> 💡 **Không cần `npm install`** — server chỉ dùng module builtin của Node, không có dependency nào.
+### Bước 4️⃣ — So sánh & tải về
 
----
-
-## 2. Chạy ứng dụng (3 bước)
-
-```bash
-# 1. Vào thư mục dự án
-cd temem99
-
-# 2. Khởi động server
-node server.js          # hoặc: npm start
-
-# 3. Mở trình duyệt
-#    → http://localhost:3000
-```
-
-Thấy dòng này là thành công:
-
-```
-✨ VideoAI Studio đang chạy tại:  http://localhost:3000
-```
-
-### Đổi cổng (nếu 3000 bị chiếm)
-
-```bash
-PORT=8080 node server.js     # Linux/macOS
-set PORT=8080 && node server.js   # Windows (CMD)
-```
-
-### Dừng server
-
-Nhấn `Ctrl + C` trong terminal đang chạy server.
+- Kéo thanh **⇔** giữa ảnh để so sánh **TRƯỚC / SAU**.
+- **🎨**: chỉnh sáng–tương phản–bão hòa nhanh (áp dụng khi tải về).
+- **🔁**: lấy kết quả làm ảnh gốc để chỉnh tiếp (rất hữu ích khi kết hợp nhiều công cụ).
+- **⬇️ PNG / ⬇️ JPG**: tải ảnh về máy. Ảnh trong **🖼️ Lịch sử** được giữ lại 12 ảnh gần nhất.
 
 ---
 
-## 3. Sử dụng ứng dụng — từng bước
+## D. Cắt khung ảnh (✂️ trên thanh công cụ)
 
-### Bước 1️⃣ — Tạo video mới (màn hình đầu)
-
-1. **Nhập chủ đề** vào ô lớn, ví dụ: *"Lịch sử vé số Vietlott"*, *"5 mẹo học tiếng Nhật hiệu quả"*, hoặc bấm một chip gợi ý có sẵn.
-2. Chỉnh các thiết lập:
-
-   | Thiết lập | Ý nghĩa |
-   |---|---|
-   | **Số cảnh** (3–8) | Bao nhiêu đoạn trong video (không tính màn mở/kết) |
-   | **Tỉ lệ khung hình** | 16:9 (YouTube) · 9:16 (TikTok/Reels) · 1:1 (bài đăng) |
-   | **Phong cách ảnh** | Điện ảnh, hoạt hình, mực nước… (ảnh AI sẽ theo phong cách này) |
-   | **Giọng đọc** | 6 giọng AI tiếng Việt online; nếu offline → dùng giọng trình duyệt |
-   | **Chuyển cảnh** | 3 kiểu: fade / trượt / zoom |
-   | **Các công tắc** | Màn mở đầu · Màn kết thúc · Nhạc nền · Logo góc video |
-
-3. Bấm **🚀 Tạo video** và chờ — AI sẽ lần lượt: viết kịch bản → tạo ảnh từng cảnh → ghi giọng đọc. Có thanh tiến độ hiển thị từng bước.
-
-> 🔌 **Mất mạng / dịch vụ AI bị giới hạn?** App tự động chuyển sang dự phòng: kịch bản chia câu thông minh, ảnh từ thư viện có sẵn + ảnh trừu tượng sinh bằng thuật toán, giọng đọc bằng Web Speech API của trình duyệt. Video vẫn tạo được bình thường.
-
-### Bước 2️⃣ — Chỉnh sửa trong Studio
-
-Sau khi tạo xong, bạn vào màn **Studio**:
-
-- **Danh sách cảnh bên trái**: bấm để nhảy tới cảnh, bấm **＋ Thêm** để thêm cảnh trống, xóa cảnh không cần.
-- **Sửa nội dung**: đổi lời bình, mô tả hình ảnh → ảnh/giọng đọc được tạo lại theo.
-- **Đổi ảnh một cảnh**: chọn ảnh AI khác, ảnh trừu tượng, hoặc **tải ảnh riêng của bạn** lên.
-- **Thu âm giọng của chính bạn** cho từng cảnh (không cần AI).
-- **Ô xem trước giữa**: phát/từng (`Space`), tua bằng cách nhấp lên timeline.
-- **Thanh trên**: đổi tên video, đổi giọng đọc toàn bộ (🔊↻), bật/tắt nhạc nền.
-
-Mọi thay đổi được **tự lưu vào localStorage** — quay lại tab sau vẫn khôi phục được (banner "Khôi phục" hiện ở màn đầu).
-
-### Bước 3️⃣ — Xuất video
-
-1. Bấm **⬇ Xuất video** → hộp thoại hiện tổng quan: độ phân giải, thời lượng, số cảnh, lời bình, nhạc nền.
-2. Bấm xác nhận → app ghi canvas + âm thanh đã trộn (lời bình + nhạc nền) bằng MediaRecorder.
-3. Chờ ghi xong (chạy **theo thời gian thực** — video 1 phút thì chờ ~1 phút) → file **WebM** tự tải về.
-
-> ⚠️ Trong lúc xuất, **giữ tab mở và hiển thị** (đừng chuyển tab/thu nhỏ) để trình duyệt không tiết kiệm tài nguyên và làm hỏng bản ghi.
+1. Nhấn **✂️** → chọn khung **3×4 / 4×6 / 1×1**.
+2. **Kéo ảnh** để căn mặt vào khung, kéo thanh **Zoom** để phóng to/nhỏ.
+3. **✓ Áp dụng** (cắt nhầm thì nhấn **↩️** hoàn tác).
 
 ---
 
-## 4. Xử lý sự cố thường gặp
+## E. Phím tắt
 
-| Triệu chứng | Nguyên nhân & cách xử lý |
+| Phím | Tác dụng |
 |---|---|
-| `Error: listen EADDRINUSE :::3000` | Cổng 3000 đang bị chiếm → chạy `PORT=8080 node server.js` hoặc tắt tiến trình cũ. |
-| Chip trạng thái hiện "Offline" | Mất mạng hoặc dịch vụ AI đang giới hạn tốc độ → app vẫn dùng được nhờ chế độ dự phòng; thử lại sau. |
-| Ảnh AI chậm / trùng nhau | Dịch vụ ảnh miễn phí đang tải cao — bấm tạo lại ảnh, hoặc dùng ảnh thư viện / tải ảnh riêng. |
-| Không nghe được giọng đọc | Bấm vào trang một lần (trình duyệt yêu cầu tương tác trước khi phát âm thanh); kiểm tra âm lượng hệ thống. |
-| Video xuất ra không có tiếng | Trình duyệt quá cũ — dùng Chrome/Edge bản mới. WebM không mở được trên máy? Mở bằng Chrome hoặc chuyển sang MP4 (CloudConvert, ffmpeg: `ffmpeg -i video.webm video.mp4`). |
-| Muốn làm lại từ đầu | Ở Studio bấm **↩ Sửa thiết lập & kịch bản**, hoặc xóa dự án lưu trong localStorage. |
+| `Ctrl` + `Enter` | Chạy AI với tùy chọn hiện tại |
+| `Ctrl` + `V` | Dán ảnh từ clipboard |
+| `1` `2` `3` | Đổi nhanh công cụ Ảnh thẻ / Ánh sáng / Phục hồi |
+| `Esc` | Đóng hộp thoại |
 
 ---
 
-## 5. Kiểm tra tự động (tuỳ chọn)
+## F. Xử lý sự cố
 
-Repo kèm kịch bản smoke-test mô phỏng cả luồng online lẫn offline:
-
-```bash
-node scripts/smoke-test.mjs
-```
-
-Kết quả mong đợi: `24 pass, 0 fail, 0 lỗi runtime`.
-
----
-
-## 6. Cấu trúc thư mục
-
-```
-temem99/
-├── server.js            Máy chủ tĩnh zero-dependency (Node builtin)
-├── package.json         scripts: start / dev
-├── scripts/
-│   └── smoke-test.mjs   Kiểm thử tự động (online + offline)
-└── public/
-    ├── index.html       Giao diện 2 màn: Tạo mới → Studio
-    ├── css/style.css    Theme tối, font Be Vietnam Pro
-    ├── js/
-    │   ├── main.js      Bộ điều phối: state, luồng tạo video, UI
-    │   ├── ai.js        Gọi Pollinations.ai + fallback offline
-    │   ├── art.js       Nhận diện chủ đề, ảnh thủ tục, thư viện ảnh
-    │   ├── audio.js     AudioContext, Web Speech, nhạc nền Web Audio
-    │   ├── renderer.js  Timeline + vẽ từng khung hình (Ken Burns, phụ đề…)
-    │   ├── exporter.js  Trộn âm offline + MediaRecorder xuất video
-    │   └── util.js      Tiện ích (PRNG, toast, timeout…)
-    └── library/         9 ảnh nền AI dự phòng (chạy offline vẫn có ảnh)
-```
+| Triệu chứng | Cách xử lý |
+|---|---|
+| Báo “Chưa có API key” | Mở ⚙️ Cài đặt API, dán key đúng engine đang chọn (Gemini/GPT) rồi Lưu. |
+| “API key không hợp lệ” | Copy thừa khoảng trắng? Tạo key mới và thử nút 🔌 Kiểm tra kết nối. |
+| “Hết quota / 429” (Gemini) | Key miễn phí bị giới hạn lượt — đợi vài phút hoặc tạo key khác. |
+| “Hết quota / 429” (OpenAI) | Tài khoản hết credit — nạp thêm tại platform.openai.com. |
+| “Không kết nối được” | Kiểm tra mạng; nếu mạng chặn Google/OpenAI thì bật VPN. |
+| Ảnh AI “đổi mặt” | Chạy lại (mỗi lần AI vẽ khác nhau); với ảnh thẻ hãy dùng ảnh gốc rõ mặt, chính diện. |
+| Chờ GPT quá lâu | Quality Cao mất 1–3 phút là bình thường; có thể Hủy rồi chạy lại quality Vừa. |
+| Trang trắng | Dùng Chrome/Edge bản mới; tắt extension chặn script; tải lại trang (Ctrl+F5). |
 
 ---
 
-## 7. Câu hỏi thường gặp
+## G. Cấu trúc file (cho dev)
 
-**❓ Có cần API key hay trả phí không?**
-Không. Dịch vụ AI online dùng Pollinations.ai (miễn phí, không cần key) và luôn có phương án dự phòng offline.
-
-**❓ Video xuất ra định dạng gì? Đăng TikTok/YouTube được không?**
-WebM (MP4 trên Safari). Đăng thẳng lên YouTube/TikTok được; muốn MP4 chuẩn thì chuyển đổi bằng ffmpeg: `ffmpeg -i video.webm -c:v libx264 -c:a aac video.mp4`.
-
-**❓ Dữ liệu có bị gửi lên server nào không?**
-Không có backend lưu dữ liệu — mọi thứ chạy trong trình duyệt bạn; server chỉ phục vụ file tĩnh.
-
-**❓ Chạy trên điện thoại được không?**
-Mở được và xem trước được, nhưng nên dùng máy tính để trải nghiệm đầy đủ (thu âm, xuất video nặng).
+```
+server.js                 Máy chủ tĩnh zero-dependency
+public/
+  index.html              Giao diện
+  css/studio.css          Theme
+  js/presets.js           Preset + trình dựng prompt
+  js/api.js               Client Gemini & OpenAI
+  js/image.js             Xử lý ảnh canvas (cắt, nét, WB, upscale, tấm in)
+  js/app.js               Điều phối UI
+  video-studio/           Bản VideoAI cũ (kèm HUONG-DAN.md riêng)
+scripts/smoke-test.mjs    Test tự động bản video cũ (cần: npm i -D jsdom esbuild @napi-rs/canvas)
+```

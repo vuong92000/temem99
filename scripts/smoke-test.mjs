@@ -1,5 +1,8 @@
 /**
- * Smoke-test tích hợp cho VideoAI Studio.
+ * Smoke-test tích hợp cho VideoAI Studio (bản cũ, nay nằm ở public/video-studio/).
+ *
+ * LƯU Ý: app chính của repo hiện là PhotoAI Studio (public/index.html).
+ * Test này vẫn kiểm tra bản VideoAI cũ.
  *
  * Chạy app thật (bundle bằng esbuild) trong jsdom + canvas thật (@napi-rs/canvas),
  * mô phỏng 2 kịch bản:
@@ -22,9 +25,9 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const BUNDLE = path.join(ROOT, '.smoke-bundle.js');
 
 /* ── 1. Bundle app bằng esbuild ── */
-execSync(`npx esbuild ${ROOT}/public/js/main.js --bundle --format=iife --outfile=${BUNDLE} --log-level=error`, { stdio: 'inherit' });
+execSync(`npx esbuild ${ROOT}/public/video-studio/js/main.js --bundle --format=iife --outfile=${BUNDLE} --log-level=error`, { stdio: 'inherit' });
 const bundleCode = readFileSync(BUNDLE, 'utf8');
-const html = readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+const html = readFileSync(path.join(ROOT, 'public/video-studio/index.html'), 'utf8');
 
 /* ── Ảnh PNG "thật" dùng làm nội dung mọi ảnh tải thành công ── */
 const TEST_PNG = (() => {

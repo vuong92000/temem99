@@ -23,15 +23,16 @@ Không cài gì cả — xem [HUONG-DAN-GITHUB.md](HUONG-DAN-GITHUB.md) (Pages /
 
 ---
 
-## B. Nhập API key (bắt buộc để chạy AI)
+## B. Chọn engine MIỄN PHÍ (không bắt buộc nhập key!)
 
 Chi tiết từng bước có trong **[HUONG-DAN-API-KEY.md](HUONG-DAN-API-KEY.md)**. Tóm tắt:
 
-1. **Gemini (miễn phí):** vào https://aistudio.google.com/apikey → *Create API key* → copy.
-2. Trong app, nhấn **🔑 API Key** (góc phải) → dán key vào ô Gemini → **💾 Lưu**.
-3. (Tùy chọn) Thêm key OpenAI nếu muốn dùng GPT Image cho ảnh đẹp hơn.
+- **🌸 Polli (dễ nhất, không cần key):** chuyển engine sang 🌸 Polli là chạy ngay.
+- **✨ Gemini (miễn phí, khuyên dùng):** lấy key tại https://aistudio.google.com/apikey → trong app nhấn **🔑 API Key** → dán key (mỗi dòng 1 key, càng nhiều càng tốt) → **💾 Lưu**.
+- **🤗 HF (token miễn phí):** tạo token tại https://huggingface.co/settings/tokens → dán vào Cài đặt.
+- **🤖 GPT Pro (trả phí, tùy chọn):** thêm key OpenAI khi cần ảnh đẹp nhất.
 
-> Nhấn **🔌 Kiểm tra kết nối** để chắc chắn key hợp lệ trước khi dùng.
+> Nhấn **🔌 Kiểm tra kết nối** để chắc chắn key/token hợp lệ trước khi dùng.
 
 ---
 
@@ -44,8 +45,10 @@ Chi tiết từng bước có trong **[HUONG-DAN-API-KEY.md](HUONG-DAN-API-KEY.m
 
 ### Bước 2️⃣ — Chọn engine AI (thanh trên cùng)
 
-- **✨ Gemini**: nhanh, miễn phí, đủ đẹp cho hầu hết nhu cầu.
-- **🤖 GPT Image**: trả phí, chất lượng rất cao (chọn *Chất lượng: Cao* trong Cài đặt khi cần ảnh “đỉnh”).
+- **🌸 Polli**: miễn phí, không cần key — chạy ngay (giờ cao điểm có thể chậm).
+- **✨ Gemini**: miễn phí, nhanh, đẹp — nhập nhiều key để app tự xoay vòng quota.
+- **🤗 HF**: token miễn phí, model Kontext/Qwen sửa ảnh tốt (Beta).
+- **🤖 GPT Pro**: trả phí, chất lượng cao nhất (chọn *Chất lượng: Cao* khi cần ảnh “đỉnh”).
 
 ### Bước 3️⃣ — Chọn công cụ ở menu trái
 
@@ -91,6 +94,9 @@ Chi tiết từng bước có trong **[HUONG-DAN-API-KEY.md](HUONG-DAN-API-KEY.m
 | “API key không hợp lệ” | Copy thừa khoảng trắng? Tạo key mới và thử nút 🔌 Kiểm tra kết nối. |
 | “Hết quota / 429” (Gemini) | Key miễn phí bị giới hạn lượt — đợi vài phút hoặc tạo key khác. |
 | “Hết quota / 429” (OpenAI) | Tài khoản hết credit — nạp thêm tại platform.openai.com. |
+| Pollinations chậm / báo quá tải | Server miễn phí đông người dùng — đợi 1–2 phút, đổi model (Kontext/FLUX/Turbo), hoặc sang ✨/🤗. |
+| HF báo *gated* / 403 | Model yêu cầu chấp nhận điều khoản — mở trang model trên HF để Accept, hoặc đổi model Qwen. |
+| App hỏi “dán link ảnh” | Trình duyệt chặn tự upload (CORS) — tải ảnh lên postimages.org/imgbb rồi dán Direct link vào. |
 | “Không kết nối được” | Kiểm tra mạng; nếu mạng chặn Google/OpenAI thì bật VPN. |
 | Ảnh AI “đổi mặt” | Chạy lại (mỗi lần AI vẽ khác nhau); với ảnh thẻ hãy dùng ảnh gốc rõ mặt, chính diện. |
 | Chờ GPT quá lâu | Quality Cao mất 1–3 phút là bình thường; có thể Hủy rồi chạy lại quality Vừa. |

@@ -1,6 +1,6 @@
 # 📸 PhotoAI Studio
 
-**Studio chỉnh sửa ảnh bằng AI chạy trong trình duyệt** — ảnh thẻ thông minh, ánh sáng studio AI, phục hồi ảnh cũ chuyên nghiệp. Chạy online bằng API key **Gemini** (miễn phí) hoặc **GPT Image** của chính bạn. Không cần cài đặt, không có backend phức tạp.
+**Studio chỉnh sửa ảnh bằng AI chạy trong trình duyệt** — ảnh thẻ thông minh, ánh sáng studio AI, phục hồi ảnh cũ chuyên nghiệp. **3 engine MIỄN PHÍ** (🌸 Pollinations không cần key · ✨ Gemini xoay vòng key · 🤗 Hugging Face) + 🤖 GPT Pro trả phí. Không cần cài đặt, không có backend phức tạp.
 
 ## ✨ Tính năng
 
@@ -9,9 +9,9 @@
 | 🪪 **Ảnh thẻ AI** | Thay trang phục AI (9+ mẫu nam/nữ), phông nền AI (trắng, xanh thẻ, xám, văn phòng…), kiểu tóc AI — **giữ nguyên 100% khuôn mặt**. Cắt khung 3×4 / 4×6 / 1×1, xuất **tấm in 300 DPI** khổ 10×15 đem ra tiệm. |
 | 💡 **Ánh sáng AI** | **10 kiểu sáng studio** (Rembrandt, Butterfly, Loop, Split, Golden Hour, Softbox, Cinematic, Neon, Low-key, High-key) + tự mô tả ánh sáng + nút **🤖 AI gợi ý** kiểu sáng hợp mặt nhất. |
 | 🕰️ **Phục hồi ảnh cũ** | Lên màu, xóa xước/ố/rách, tăng chi tiết mặt, vẽ lại tóc, vẽ lại nền, khử nhiễu, 3 mức độ — **giữ danh tính khuôn mặt**. Kèm công cụ offline: tăng nét, cân trắng, phóng 2×. |
-| 🤖 **2 engine AI** | ✨ **Gemini** (2.5 Flash / 3 Pro / 3.1 Flash) và 🤖 **GPT Image** (1 / 1.5) — đổi engine + model ngay trên thanh công cụ. |
+| 🤖 **4 engine AI** | 🌸 **Pollinations Free** (không cần key) · ✨ **Gemini Free** (tự xoay vòng nhiều key) · 🤗 **HF Free Beta** (Kontext/Qwen) · 🤖 **GPT Pro** (trả phí) — đổi engine + model ngay trên thanh công cụ. |
 | 🖼️ **Trình xem chuyên nghiệp** | Kéo-thả / dán ảnh (Ctrl+V), thanh **so sánh Trước–Sau**, zoom, chỉnh màu nhanh, nút 🔁 lấy kết quả chỉnh tiếp nhiều bước, lịch sử 12 ảnh. |
-| 🔒 **Riêng tư** | Ảnh & API key chỉ nằm trong trình duyệt của bạn, gọi thẳng tới Google/OpenAI, không qua máy chủ trung gian. |
+| 🔒 **Riêng tư** | Ảnh & API key chỉ nằm trong trình duyệt của bạn, gọi thẳng tới nhà cung cấp AI, không qua máy chủ trung gian. (Riêng 🌸 Pollinations: ảnh qua server công cộng miễn phí.) |
 
 ## 🚀 Chạy ứng dụng
 

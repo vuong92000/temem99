@@ -408,3 +408,12 @@ input[type="range"] { accent-color: var(--accent); cursor: pointer; }
   .st-left .muted { display: none; }
   .busy-box { padding: 26px; margin: 0 16px; }
 }
+
+/* ── Bổ sung cho 4 engine (3 miễn phí + 1 Pro) ─────────────────────── */
+.seg-provider button { padding: 7px 10px; font-size: 12.5px; }
+.pill.beta { background: rgba(34, 211, 238, 0.13); color: var(--accent2); border: 1px solid rgba(34, 211, 238, 0.4); }
+#setGemKeys { min-height: 66px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+#imgUrlInput { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+@media (max-width: 1240px) {
+  .seg-provider button { padding: 7px 8px; font-size: 11.5px; }
+}

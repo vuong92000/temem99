@@ -24,8 +24,10 @@
   </div>
   <div class="topbar-center">
     <div class="seg seg-provider" id="providerSeg" title="Chọn engine AI để xử lý ảnh">
-      <button data-p="gemini" class="active">✨ Gemini</button>
-      <button data-p="openai">🤖 GPT Image</button>
+      <button data-p="gemini" class="active" title="Gemini — miễn phí, tự xoay vòng nhiều key">✨ Gemini</button>
+      <button data-p="pollinations" title="Pollinations — miễn phí, không cần key">🌸 Polli</button>
+      <button data-p="hf" title="Hugging Face — token miễn phí">🤗 HF</button>
+      <button data-p="openai" title="GPT Image — trả phí, chất lượng Pro">🤖 GPT</button>
     </div>
     <select id="modelSelect" class="select" title="Chọn model AI"></select>
   </div>
@@ -361,12 +363,10 @@
       <div class="api-cols">
         <div class="card">
           <h3>✨ Google Gemini <span class="pill free">Miễn phí</span></h3>
-          <p class="muted small">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → “Create API key”.</p>
-          <label class="field"><span>Gemini API key</span>
-            <div class="row gap">
-              <input type="password" id="setGemKey" class="input flex1" placeholder="AIza…" autocomplete="off">
-              <button id="setGemShow" class="btn small ghost">👁️</button>
-            </div>
+          <p class="muted small">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → “Create API key”. <b>Nhập nhiều key, mỗi dòng 1 key</b> — app tự xoay vòng khi key hết quota.</p>
+          <label class="field"><span>Gemini API keys (mỗi dòng 1 key)</span>
+            <textarea id="setGemKeys" class="textarea" rows="3" placeholder="AIza…&#10;AIza… (key thứ 2, thứ 3…)" autocomplete="off" spellcheck="false"></textarea>
+            <span class="muted small" id="gemKeyCount"></span>
           </label>
           <label class="field"><span>Model ảnh Gemini</span>
             <select id="setGemModel" class="select wide"></select>
@@ -375,13 +375,45 @@
             <input id="setGemCustom" class="input wide" placeholder="vd: gemini-2.5-flash-image" autocomplete="off">
           </label>
           <div class="row gap">
-            <button id="btnTestGem" class="btn small ghost">🔌 Kiểm tra kết nối</button>
+            <button id="btnTestGem" class="btn small ghost">🔌 Kiểm tra key đầu</button>
             <span id="gemStatus" class="muted small"></span>
           </div>
         </div>
         <div class="card">
-          <h3>🤖 OpenAI GPT Image <span class="pill pay">Trả phí</span></h3>
-          <p class="muted small">Lấy key tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> (cần nạp credit).</p>
+          <h3>🌸 Pollinations <span class="pill free">Miễn phí · Không cần key</span></h3>
+          <p class="muted small">Server AI cộng đồng miễn phí — <b>chọn là chạy ngay, không cần key</b>. App tự tải ảnh lên host tạm để xử lý (giờ cao điểm có thể chậm).</p>
+          <label class="field"><span>Model sửa ảnh</span>
+            <select id="setPollModel" class="select wide"></select>
+          </label>
+          <div class="row gap">
+            <button id="btnTestPoll" class="btn small ghost">🔌 Kiểm tra kết nối</button>
+            <span id="pollStatus" class="muted small"></span>
+          </div>
+          <p class="muted small">Gợi ý: <b>Kontext</b> sửa ảnh chuẩn nhất · <b>Turbo</b> nhanh nhất · <b>GPT Image (Beta)</b> thử cho vui.</p>
+        </div>
+        <div class="card">
+          <h3>🤗 Hugging Face <span class="pill free">Miễn phí</span> <span class="pill beta">Beta</span></h3>
+          <p class="muted small">Tạo token miễn phí tại <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a> (cần quyền <i>Inference Providers</i>). Model FLUX Kontext & Qwen sửa ảnh rất tốt.</p>
+          <label class="field"><span>HF Token</span>
+            <div class="row gap">
+              <input type="password" id="setHfKey" class="input flex1" placeholder="hf_…" autocomplete="off">
+              <button id="setHfShow" class="btn small ghost">👁️</button>
+            </div>
+          </label>
+          <label class="field"><span>Model sửa ảnh</span>
+            <select id="setHfModel" class="select wide"></select>
+          </label>
+          <label class="field"><span>Hoặc nhập tên model khác</span>
+            <input id="setHfCustom" class="input wide" placeholder="vd: Qwen/Qwen-Image-Edit" autocomplete="off">
+          </label>
+          <div class="row gap">
+            <button id="btnTestHf" class="btn small ghost">🔌 Kiểm tra kết nối</button>
+            <span id="hfStatus" class="muted small"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🤖 GPT Image Pro <span class="pill pay">Trả phí</span></h3>
+          <p class="muted small">Lấy key tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> (cần nạp credit). Chất lượng cao nhất khi cần ảnh “đỉnh”.</p>
           <label class="field"><span>OpenAI API key</span>
             <div class="row gap">
               <input type="password" id="setOaiKey" class="input flex1" placeholder="sk-…" autocomplete="off">
@@ -411,7 +443,7 @@
           </div>
         </div>
       </div>
-      <p class="tip">🔒 Key được lưu <b>chỉ trong trình duyệt này</b> (localStorage). Không dùng chung máy tính lạ. Xóa key bất cứ lúc nào bằng cách xóa nội dung ô và lưu.</p>
+      <p class="tip">🔒 Key/token được lưu <b>chỉ trong trình duyệt này</b> (localStorage). Không dùng chung máy tính lạ. Pollinations không cần key — nhưng ảnh sẽ qua server công cộng miễn phí, đừng dùng cho ảnh nhạy cảm.</p>
     </div>
     <div class="modal-foot">
       <button class="btn ghost" data-close="modalSettings">Đóng</button>
@@ -428,15 +460,17 @@
       <button class="btn small ghost" data-close="modalHelp">✕</button>
     </div>
     <div class="modal-body">
-      <h4>1️⃣ Lấy API key</h4>
+      <h4>1️⃣ Chọn engine AI (3 miễn phí + 1 Pro)</h4>
       <ul>
-        <li><b>Gemini (miễn phí, khuyên dùng):</b> vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → đăng nhập Google → <i>Create API key</i> → copy key dán vào ⚙️ Cài đặt API.</li>
-        <li><b>OpenAI GPT (trả phí, ảnh rất đẹp):</b> vào <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> → tạo key (đầu <i>sk-</i>) → nạp credit → dán vào Cài đặt.</li>
+        <li><b>🌸 Polli (miễn phí, không cần key):</b> chọn là chạy ngay — hợp nhất cho người mới.</li>
+        <li><b>✨ Gemini (miễn phí, khuyên dùng):</b> vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → <i>Create API key</i> → dán vào ⚙️ Cài đặt API (nhập nhiều key để app tự xoay vòng).</li>
+        <li><b>🤗 HF (token miễn phí):</b> tạo token tại <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a> → dán vào Cài đặt.</li>
+        <li><b>🤖 GPT Pro (trả phí, đẹp nhất):</b> key tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> + nạp credit.</li>
       </ul>
       <h4>2️⃣ Quy trình chỉnh ảnh</h4>
       <ul>
         <li>Tải ảnh: kéo-thả, <b>Ctrl+V</b> dán ảnh chụp màn hình, hoặc dùng ảnh mẫu.</li>
-        <li>Chọn engine <b>✨ Gemini / 🤖 GPT</b> trên thanh trên cùng.</li>
+        <li>Chọn engine trên thanh trên cùng (<b>✨ Gemini · 🌸 Polli · 🤗 HF · 🤖 GPT</b>).</li>
         <li>Chọn công cụ ở menu trái, chỉnh tùy chọn, nhấn <b>⚡ Xử lý bằng AI</b>.</li>
         <li>Kéo thanh <b>⇔</b> để so sánh Trước–Sau. Nhấn <b>🔁</b> để lấy kết quả chỉnh tiếp nhiều bước.</li>
       </ul>
@@ -484,6 +518,30 @@
     <div class="modal-foot">
       <button class="btn ghost" data-close="modalPrint">Đóng</button>
       <button id="btnPrintDownload" class="btn primary">⬇️ Tải tấm in (300 DPI)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL DÁN LINK ẢNH (Pollinations miễn phí) ═══════════ -->
+<div id="modalImgUrl" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🌸 Dán link ảnh để làm miễn phí</h3>
+      <button class="btn small ghost" data-close="modalImgUrl">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted small">Trình duyệt chặn tự động tải ảnh lên (CORS). Bạn hãy tải ảnh lên 1 host miễn phí rồi dán <b>link trực tiếp (.jpg/.png)</b> vào đây:</p>
+      <ul>
+        <li><b>postimages.org</b> → Upload → copy <i>Direct link</i></li>
+        <li><b>imgbb.com</b> → Upload → copy link ảnh</li>
+        <li>Hoặc bất kỳ link ảnh công khai nào (Imgur, GitHub…)</li>
+      </ul>
+      <input id="imgUrlInput" class="input wide" placeholder="https://…/anh-cua-ban.jpg" autocomplete="off" spellcheck="false">
+      <p class="tip">🔒 Link ảnh sẽ được gửi tới Pollinations (server AI miễn phí) để xử lý. Đừng dùng cho ảnh nhạy cảm.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="modalImgUrl">Hủy</button>
+      <button id="btnImgUrlOk" class="btn primary">🌸 Tiếp tục làm ảnh miễn phí</button>
     </div>
   </div>
 </div>

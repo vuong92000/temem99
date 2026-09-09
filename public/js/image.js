@@ -242,6 +242,44 @@ const Img = {
     a.href = dataUrl; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
   },
+
+  /* ── Blob JPEG để upload host ẩn danh ───────────────────────────── */
+  async toJPEGBlob(dataUrl, maxDim = 1600, q = 0.9) {
+    if (/^https?:\/\//.test(dataUrl)) { // ảnh link ngoài: tải về trước
+      const r = await fetch(dataUrl);
+      if (!r.ok) throw new Error('Không tải được ảnh từ link.');
+      return r.blob();
+    }
+    const c = await this.toCanvas(dataUrl, maxDim);
+    return new Promise((resolve, reject) => {
+      c.toBlob(b => b ? resolve(b) : reject(new Error('Không mã hoá được ảnh.')), 'image/jpeg', q);
+    });
+  },
+
+  blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('Không đọc được dữ liệu ảnh.'));
+      fr.readAsDataURL(blob);
+    });
+  },
+
+  /** Tải ảnh từ URL về thành dataURL (cần host cho phép CORS). */
+  async remoteToDataURL(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const b = await r.blob();
+    if (!String(b.type || '').startsWith('image/')) throw new Error('Link không phải ảnh.');
+    return this.blobToDataURL(b);
+  },
+
+  /** Co kích thước: cạnh dài = maxLong, làm tròn theo bội mult. */
+  snapLong(w, h, maxLong = 1024, mult = 8) {
+    const s = Math.min(1, maxLong / Math.max(w, h));
+    const r = v => Math.max(mult, Math.round((v * s) / mult) * mult);
+    return { w: r(w), h: r(h) };
+  },
 };
 
 PhotoAI.Img = Img;

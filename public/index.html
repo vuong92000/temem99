@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/ai-director.css">
+  <link rel="stylesheet" href="css/script-wizard.css">
 </head>
 <body>
 
@@ -54,6 +55,38 @@
             <button class="tab active" data-mode="ai">✨ AI viết kịch bản</button>
             <button class="tab" data-mode="manual">📝 Dán kịch bản có sẵn</button>
           </div>
+
+          <section id="scriptWizard" class="script-wizard" aria-labelledby="scriptWizardTitle">
+            <div class="wizard-head">
+              <div>
+                <span class="wizard-kicker">✦ AI SCRIPT WIZARD</span>
+                <h3 id="scriptWizardTitle">Nạp kịch bản bằng một tiêu đề</h3>
+                <p>Nhập tên câu chuyện, AI sẽ viết lời bình và tạo prompt video tiếng Anh cho từng cảnh.</p>
+              </div>
+              <span class="wizard-badge">CHART continuity</span>
+            </div>
+            <div class="wizard-controls">
+              <label class="field wizard-title-field">
+                <span>Tiêu đề câu chuyện</span>
+                <input id="wizardTitle" type="text" autocomplete="off" placeholder="VD: Chuyện mẹ chồng nàng dâu">
+              </label>
+              <label class="field wizard-count-field">
+                <span>Số cảnh</span>
+                <select id="wizardSceneCount">
+                  <option value="3">3 cảnh · ngắn</option>
+                  <option value="5">5 cảnh · nhanh</option>
+                  <option value="8" selected>8 cảnh · đầy đủ</option>
+                  <option value="10">10 cảnh · dài</option>
+                </select>
+              </label>
+              <button id="btnWizardGenerate" type="button" class="btn wizard-primary">✨ Tạo kịch bản</button>
+            </div>
+            <div class="wizard-status-row">
+              <span id="wizardStatus" class="wizard-status">Bước 1 · Nhập tiêu đề rồi tạo kịch bản</span>
+              <span class="wizard-tip">Prompt ảnh luôn có mã nhân vật CHART 1, CHART 2…</span>
+            </div>
+            <div id="wizardPreview" class="wizard-preview hidden"></div>
+          </section>
 
           <div class="director-panel">
             <div class="director-head">

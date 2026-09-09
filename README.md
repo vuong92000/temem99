@@ -7,6 +7,7 @@
 | Tính năng | Chi tiết |
 |---|---|
 | ✍️ **AI Director / Google Vids-style** | Chọn Storyboard, Thuyết trình, Sản phẩm, Social reel, Prompt Lab hoặc **Phim ngắn AI** → AI viết storyboard có thể xem trước/chỉnh sửa trước khi dựng. |
+| ✦ **AI Script Wizard** | Nhập một tiêu đề ngắn → tạo 3–10 cảnh (mặc định 8), lời bình tiếng Việt, prompt video tiếng Anh và mã nhân vật `CHART 1`, `CHART 2` để giữ consistency. Có preview Glow Pulse và nút **Nạp Prompt** vào hàng đợi sản xuất. |
 | 🎞 **AI làm phim ngắn** | Tạo film bible, logline, nhân vật nhất quán, thể loại, cấu trúc 3 hồi, shot type, thoại, prompt ảnh/chuyển động và dựng preview thành video. |
 | 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
@@ -42,6 +43,7 @@ public/
   index.html         Giao diện (AI Director → Storyboard Studio)
   css/style.css      Theme tối, font Be Vietnam Pro
   css/ai-director.css Mode AI, Prompt Lab, storyboard preview, nguồn mở
+  css/script-wizard.css Glow Pulse và preview cho AI Script Wizard
   js/
     main.js          Bộ điều phối: state, luồng tạo video, UI, phát/xem trước
     ai.js            Gọi Pollinations.ai (kịch bản / ảnh / giọng đọc) + fallback

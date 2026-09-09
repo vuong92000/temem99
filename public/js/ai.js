@@ -260,6 +260,97 @@ function parseScenesJSON(content) {
   return [];
 }
 
+function normalizeChartCodes(value) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(/[,|]/);
+  return [...new Set(raw.map(code => String(code).trim().replace(/\bCHAR(?:ACTER)?\s*(\d+)/gi, 'CHART $1')).filter(code => /CHART\s*\d+/i.test(code)))];
+}
+
+function parseWizardScenesJSON(content) {
+  const raw = String(content || '').trim();
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [fence?.[1], raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1), raw].filter(candidate => candidate && candidate.length > 2);
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (!Array.isArray(parsed)) continue;
+      const scenes = parsed.map((item, index) => {
+        const characters = normalizeChartCodes(item?.characterCodes ?? item?.characters ?? item?.characterRefs);
+        const prompt = String(item?.promptEnglish ?? item?.imagePrompt ?? item?.videoPrompt ?? '').trim();
+        const motion = String(item?.motionPrompt ?? item?.cameraPrompt ?? '').trim();
+        return {
+          text: String(item?.narration ?? item?.script ?? item?.text ?? '').trim(),
+          imagePrompt: prompt,
+          motionPrompt: motion,
+          characterCodes: characters.length ? characters : ['CHART 1'],
+          shotType: String(item?.shotType ?? '').trim(),
+        };
+      }).filter(scene => scene.text && scene.imagePrompt);
+      if (scenes.length) return scenes;
+    } catch { /* thử ứng viên JSON kế tiếp */ }
+  }
+  return [];
+}
+
+/**
+ * AI Script Wizard: biến một tiêu đề ngắn thành storyboard có prompt video tiếng Anh.
+ * Mỗi cảnh có characterCodes CHART 1/CHART 2 để nối với thư viện ảnh tham chiếu.
+ */
+export async function generateWizardScriptViaAI(title, { sceneCount = 8, style = 'cinematic' } = {}) {
+  const safeCount = clamp(Number(sceneCount) || 8, 3, 10);
+  const styleText = STYLE_SUFFIX[style] || STYLE_SUFFIX.cinematic;
+  const system = [
+    'Bạn là AI Script Wizard cho một ứng dụng tạo phim ngắn bằng text-to-video.',
+    `Từ tiêu đề tiếng Việt, hãy viết đúng ${safeCount} cảnh liên tục: hook → phát triển → cao trào → kết thúc.`,
+    'Lời bình/narration viết bằng tiếng Việt, tự nhiên, mỗi cảnh 1-2 câu ngắn.',
+    'promptEnglish phải là prompt tiếng Anh chi tiết cho video generation model: nhân vật, hành động, bối cảnh, thời gian, ánh sáng, ống kính, bố cục và cảm xúc; không chữ, logo hoặc watermark.',
+    'Nhận diện nhân vật chính và gán mã ổn định CHART 1, CHART 2. Phải lặp lại cùng mã trong mọi cảnh có nhân vật đó; mô tả ngoại hình nhất quán trong promptEnglish.',
+    'Chỉ trả về một mảng JSON hợp lệ, không markdown, theo schema:',
+    '[{"scene":1,"narration":"...","promptEnglish":"detailed English video prompt...","motionPrompt":"English camera movement...","characterCodes":["CHART 1"],"shotType":"wide shot"}]',
+    `Phong cách hình ảnh: ${styleText}. Tiêu đề: ${title}`,
+  ].join('\n');
+  let content = null;
+  try {
+    const res = await withTimeout(fetch(`${TEXT_API}/openai?referrer=${REFERRER}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai',
+        messages: [{ role: 'system', content: system }, { role: 'user', content: `Tiêu đề câu chuyện: ${title}` }],
+        seed: Math.floor(Math.random() * 1e6),
+        referrer: REFERRER,
+      }),
+    }), 70000, 'Quá thời gian chờ AI Script Wizard');
+    if (res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      content = ct.includes('application/json')
+        ? (await res.json())?.choices?.[0]?.message?.content
+        : await res.text();
+    }
+  } catch { /* main sẽ dùng fallback local */ }
+  const scenes = parseWizardScenesJSON(content);
+  if (!scenes.length) throw new Error('AI Script Wizard không trả về kịch bản hợp lệ');
+  return scenes.slice(0, safeCount);
+}
+
+/** Fallback offline cho Wizard, vẫn tạo prompt tiếng Anh và mã CHART ổn định. */
+export function heuristicWizardScript(title, { sceneCount = 8, style = 'cinematic' } = {}) {
+  const safeCount = clamp(Number(sceneCount) || 8, 3, 10);
+  const topic = String(title || 'Một câu chuyện đáng nhớ').trim();
+  let base = heuristicScript(topic, { sceneCount: Math.min(safeCount, 8), style, motionStyle: 'slow-zoom', creativeMode: 'storyboard' });
+  while (base.length < safeCount) {
+    const source = base[base.length % base.length];
+    base.push({ ...source, text: `${source.text} Hành trình của câu chuyện tiếp tục mở ra một bước ngoặt mới.` });
+  }
+  const beats = ['opening hook', 'introducing the world', 'character motivation', 'rising conflict', 'turning point', 'emotional climax', 'resolution', 'final memorable image'];
+  return base.slice(0, safeCount).map((scene, index) => ({
+    ...scene,
+    characterCodes: ['CHART 1'],
+    shotType: ['wide establishing shot', 'medium shot', 'close-up', 'tracking shot', 'over-the-shoulder shot', 'dramatic close-up', 'wide resolution shot', 'hero final shot'][index % 8],
+    imagePrompt: `CHART 1, consistent Vietnamese protagonist, ${scene.imagePrompt}, ${beats[index % beats.length]}, detailed cinematic video frame, no text, no logo, no watermark`,
+    motionPrompt: `${scene.motionPrompt}, smooth temporal continuity, keep CHART 1 appearance consistent`,
+  }));
+}
+
 /* ── Kịch bản dự phòng (offline) ── */
 
 const VI_STOPWORDS = new Set(('và của với các cái những để cho từ này đó là có được sẽ không bạn tôi ta chúng nó ở trên dưới khi thì ra vào bằng như cũng đã vừa hơn nhất chỉ về mà rất tới trước sau nữa ai gì nào cả hoặc nhưng vì sở dĩ do theo mỗi lần nay ngày năm'.split(' ')));

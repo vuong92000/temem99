@@ -1,0 +1,62 @@
+/* AI Script Wizard — title to multilingual video prompt queue */
+.script-wizard {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid rgba(34, 211, 238, .46);
+  border-radius: 16px;
+  background:
+    radial-gradient(520px 180px at 15% -40%, rgba(34, 211, 238, .25), transparent 70%),
+    linear-gradient(145deg, rgba(10, 32, 53, .94), rgba(18, 22, 45, .94));
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, .05), 0 0 28px rgba(34, 211, 238, .12);
+  animation: wizardGlowPulse 4.8s ease-in-out infinite;
+}
+.script-wizard::before {
+  content: '';
+  position: absolute;
+  inset: -60% 45% auto -20%;
+  height: 170px;
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(34, 211, 238, .18), transparent 68%);
+  transform: rotate(-8deg);
+}
+@keyframes wizardGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(34, 211, 238, .04), 0 0 22px rgba(34, 211, 238, .09); }
+  50% { box-shadow: 0 0 0 1px rgba(34, 211, 238, .13), 0 0 34px rgba(34, 211, 238, .22); }
+}
+.wizard-head, .wizard-controls, .wizard-status-row { position: relative; z-index: 1; }
+.wizard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.wizard-kicker { color: var(--accent-2); font-size: 10px; font-weight: 800; letter-spacing: 1.7px; }
+.wizard-head h3 { margin: 4px 0 3px; font-size: 18px; letter-spacing: -.2px; }
+.wizard-head p { color: #9cc4d4; font-size: 11.5px; line-height: 1.5; }
+.wizard-badge { flex: 0 0 auto; color: #baf5ff; border: 1px solid rgba(34, 211, 238, .40); background: rgba(34, 211, 238, .10); border-radius: 999px; padding: 6px 9px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.wizard-controls { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; align-items: end; gap: 10px; margin-top: 14px; }
+.wizard-controls .field { margin: 0; }
+.wizard-title-field input { border-color: rgba(34, 211, 238, .35); background: rgba(4, 15, 28, .75); }
+.wizard-title-field input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(34, 211, 238, .10); }
+.wizard-primary { min-height: 42px; color: #03121a; border: 0; background: linear-gradient(135deg, #67e8f9, #22d3ee); box-shadow: 0 7px 20px rgba(34, 211, 238, .24); }
+.wizard-primary:hover { color: #03121a; background: linear-gradient(135deg, #a5f3fc, #22d3ee); box-shadow: 0 8px 26px rgba(34, 211, 238, .38); }
+.wizard-status-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; }
+.wizard-status { color: #b8d3df; font-size: 11px; }
+.wizard-status.ok { color: var(--ok); }
+.wizard-status.error { color: #fecaca; }
+.wizard-tip { color: #7399aa; font-size: 10px; }
+.wizard-preview { position: relative; z-index: 1; margin-top: 13px; padding-top: 13px; border-top: 1px solid rgba(34, 211, 238, .20); }
+.wizard-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 9px; }
+.wizard-preview-head b { color: #baf5ff; font-size: 12px; }
+.wizard-preview-head small { color: #7399aa; font-size: 10px; }
+.wizard-preview-list { display: grid; gap: 6px; max-height: 300px; overflow: auto; padding-right: 2px; }
+.wizard-scene { display: grid; grid-template-columns: 27px minmax(0, 1fr); gap: 8px; padding: 8px; border: 1px solid rgba(34, 211, 238, .14); border-radius: 9px; background: rgba(4, 15, 28, .52); }
+.wizard-scene-number { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 7px; color: #06141c; background: #67e8f9; font-size: 10px; font-weight: 800; }
+.wizard-scene-title { display: block; color: #e3faff; font-size: 11px; line-height: 1.4; }
+.wizard-scene-prompt { display: block; margin-top: 3px; color: #89bac9; font-size: 10px; line-height: 1.4; }
+.wizard-character { display: inline-block; margin-top: 4px; color: #67e8f9; font-size: 9.5px; font-weight: 700; letter-spacing: .2px; }
+.wizard-load { margin-top: 10px; color: #03121a; border: 0; background: #67e8f9; }
+.wizard-load:hover { color: #03121a; background: #a5f3fc; }
+@media (max-width: 650px) {
+  .wizard-head { flex-direction: column; }
+  .wizard-controls { grid-template-columns: 1fr 1fr; }
+  .wizard-title-field { grid-column: 1 / -1; }
+  .wizard-primary { width: 100%; }
+}

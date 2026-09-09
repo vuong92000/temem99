@@ -5,7 +5,7 @@
 import { $, $$, clamp, toast, download, slugify, fmtTime, escapeHtml, sleep } from './util.js';
 import { THEMES, detectTheme, loadImage, makeSceneCanvas, makeProceduralArt, LIBRARY_LIST } from './art.js';
 import {
-  service, generateScriptViaAI, generateShortFilmPlanViaAI, heuristicScript, heuristicShortFilmPlan, generateImageForPrompt,
+  service, generateScriptViaAI, generateWizardScriptViaAI, heuristicScript, heuristicWizardScript, generateShortFilmPlanViaAI, heuristicShortFilmPlan, generateImageForPrompt,
   synthesizeVoice, generatePromptKitViaAI, getLocalPromptKit,
   checkTextService, checkImageService, STYLE_SUFFIX, MOTION_PRESETS, VOICE_TONES, FILM_GENRES,
 } from './ai.js';
@@ -66,6 +66,7 @@ let lastActiveSceneId = null;
 let mode = 'ai';
 let sceneCounter = 0;
 let draftPlan = null;
+let wizardPlan = null;
 
 const CREATIVE_MODES = {
   storyboard: 'Tạo storyboard có hook, diễn biến và kết luận; mỗi cảnh có prompt ảnh và prompt camera.',
@@ -142,6 +143,9 @@ const ui = {
   planStatus: $('#planStatus'),
   planPreview: $('#planPreview'),
   modeDescription: $('#modeDescription'),
+  wizardTitle: $('#wizardTitle'), wizardSceneCount: $('#wizardSceneCount'),
+  btnWizardGenerate: $('#btnWizardGenerate'), wizardStatus: $('#wizardStatus'),
+  wizardPreview: $('#wizardPreview'),
   inputSceneCount: $('#inputSceneCount'),
   sceneCountVal: $('#sceneCountVal'),
   inputStyle: $('#inputStyle'),
@@ -254,7 +258,7 @@ function pushScene(type, props = {}) {
     referenceImageRef: null, videoRef: null, videoEl: null,
     imageKind: 'proc', imageRef: null,
     seed: Math.floor(Math.random() * 1e9),
-    theme: null, buffer: null, voiceKind: null,
+    theme: null, characterCodes: [], buffer: null, voiceKind: null,
     ...props,
   };
   state.scenes.push(sc);
@@ -463,12 +467,18 @@ function planSignature(o) {
 function normalizePlan(parts, opts) {
   return (parts || []).slice(0, opts.sceneCount).map((p, i) => {
     const local = getLocalPromptKit(p.text || opts.topic, opts);
+    const characterCodes = [...new Set((Array.isArray(p.characterCodes) ? p.characterCodes : String(p.characterCodes || '').split(/[,|]/))
+      .map(code => String(code).trim().replace(/\bCHAR(?:ACTER)?\s*(\d+)/gi, 'CHART $1'))
+      .filter(code => /CHART\s*\d+/i.test(code)))];
+    const chartHint = characterCodes.length ? `Character continuity: ${characterCodes.join(', ')}.` : '';
+    const imagePrompt = String(p.imagePrompt || p.promptEnglish || local.imagePrompt).trim();
     return {
       text: String(p.text || '').trim(),
-      imagePrompt: String(p.imagePrompt || local.imagePrompt).trim(),
-      referencePrompt: String(p.referencePrompt || p.imagePrompt || local.imagePrompt).trim(),
-      motionPrompt: String(p.motionPrompt || local.motionPrompt).trim(),
+      imagePrompt: [imagePrompt, chartHint].filter(Boolean).join(' ').trim(),
+      referencePrompt: [String(p.referencePrompt || imagePrompt || local.imagePrompt).trim(), chartHint].filter(Boolean).join(' ').trim(),
+      motionPrompt: [String(p.motionPrompt || local.motionPrompt).trim(), chartHint].filter(Boolean).join(' ').trim(),
       negativePrompt: String(p.negativePrompt || local.negativePrompt).trim(),
+      characterCodes: characterCodes.length ? characterCodes : (p.characterCodes ? ['CHART 1'] : []),
       shotType: String(p.shotType || '').trim(),
       dialogue: String(p.dialogue || '').trim(),
     };
@@ -562,6 +572,52 @@ function renderPlanPreview(parts, filmBible = null) {
   ui.planPreview.classList.remove('hidden');
 }
 
+function renderWizardPreview(parts, title) {
+  if (!parts?.length) {
+    ui.wizardPreview.classList.add('hidden');
+    ui.wizardPreview.innerHTML = '';
+    return;
+  }
+  ui.wizardPreview.innerHTML = `
+    <div class="wizard-preview-head">
+      <b>✅ ${escapeHtml(title)} · ${parts.length} cảnh đã tạo</b>
+      <small>Kiểm tra prompt trước khi nạp vào hàng đợi</small>
+    </div>
+    <div class="wizard-preview-list">
+      ${parts.map((part, index) => `<article class="wizard-scene">
+        <span class="wizard-scene-number">${String(index + 1).padStart(2, '0')}</span>
+        <div>
+          <b class="wizard-scene-title">${escapeHtml(part.text.slice(0, 180))}${part.text.length > 180 ? '…' : ''}</b>
+          <small class="wizard-scene-prompt">${escapeHtml(part.imagePrompt.slice(0, 280))}${part.imagePrompt.length > 280 ? '…' : ''}</small>
+          ${part.characterCodes?.length ? `<span class="wizard-character">👤 ${escapeHtml(part.characterCodes.join(' · '))}</span>` : ''}
+        </div>
+      </article>`).join('')}
+    </div>
+    <button id="btnWizardLoad" type="button" class="btn wizard-load">📥 Nạp Prompt vào hàng đợi sản xuất</button>
+  `;
+  ui.wizardPreview.classList.remove('hidden');
+  ui.wizardPreview.querySelector('#btnWizardLoad').addEventListener('click', loadWizardPlan);
+}
+
+function loadWizardPlan() {
+  if (!wizardPlan?.parts?.length) {
+    toast('Hãy tạo kịch bản trong AI Script Wizard trước.', 'warn');
+    return;
+  }
+  const title = wizardPlan.title;
+  ui.inputTopic.value = title;
+  ui.inputSceneCount.value = String(wizardPlan.parts.length);
+  ui.sceneCountVal.textContent = String(wizardPlan.parts.length);
+  mode = 'ai';
+  $$('#modeTabs .tab').forEach(tab => tab.classList.toggle('active', tab.dataset.mode === 'ai'));
+  const opts = { ...collectCreateOpts(), topic: title, mode: 'ai', sceneCount: wizardPlan.parts.length };
+  draftPlan = { signature: planSignature(opts), parts: wizardPlan.parts, filmBible: null };
+  renderPlanPreview(wizardPlan.parts);
+  ui.planStatus.textContent = '✅ Prompt Wizard đã nạp — bấm Tạo video để đưa vào Studio.';
+  ui.inputTopic.focus();
+  toast('📥 Đã nạp kịch bản và prompt tiếng Anh vào hàng đợi sản xuất.', 'ok', 4500);
+}
+
 function deriveTitle(topic, parts) {
   if (parts && parts.length && parts[0].text) {
     const first = parts[0].text.split(/(?<=[.!?…])\s+/)[0].trim();
@@ -607,6 +663,7 @@ async function createFlow({ openVeoLite = false } = {}) {
       imagePrompt: p.imagePrompt || '',
       referencePrompt: p.referencePrompt || p.imagePrompt || '',
       motionPrompt: p.motionPrompt || '',
+      characterCodes: p.characterCodes || [],
       negativePrompt: p.negativePrompt || '',
       shotType: p.shotType || '',
       dialogue: p.dialogue || '',
@@ -1353,6 +1410,7 @@ function saveProject() {
       scenes: state.scenes.map(sc => ({
         type: sc.type, text: sc.text, seed: sc.seed, theme: sc.theme,
         imagePrompt: sc.imagePrompt, referencePrompt: sc.referencePrompt, motionPrompt: sc.motionPrompt,
+        characterCodes: sc.characterCodes || [],
         referenceImageRef: sc.referenceImageRef || null,
         negativePrompt: sc.negativePrompt, shotType: sc.shotType, dialogue: sc.dialogue,
         imageKind: sc.imageKind === 'upload' ? 'library' : sc.imageKind,
@@ -1391,6 +1449,7 @@ function restoreProject(data) {
       referencePrompt: sc.referencePrompt || sc.imagePrompt || '',
       referenceImageRef: sc.referenceImageRef || null,
       motionPrompt: sc.motionPrompt || '',
+      characterCodes: sc.characterCodes || [],
       negativePrompt: sc.negativePrompt || '',
       shotType: sc.shotType || '',
       dialogue: sc.dialogue || '',
@@ -1480,6 +1539,61 @@ ui.inputTopic.addEventListener('input', () => {
   draftPlan = null;
   ui.planStatus.textContent = 'Gợi ý đã thay đổi — đề cương cũ sẽ không được dùng.';
   ui.planPreview.classList.add('hidden');
+});
+
+ui.wizardTitle.addEventListener('input', () => {
+  wizardPlan = null;
+  ui.wizardPreview.classList.add('hidden');
+  ui.wizardStatus.className = 'wizard-status';
+  ui.wizardStatus.textContent = 'Bước 1 · Nhập tiêu đề rồi tạo kịch bản';
+});
+
+ui.btnWizardGenerate.addEventListener('click', async () => {
+  const title = ui.wizardTitle.value.trim();
+  const sceneCount = parseInt(ui.wizardSceneCount.value, 10) || 8;
+  if (!title) {
+    ui.wizardStatus.className = 'wizard-status error';
+    ui.wizardStatus.textContent = 'Hãy nhập tiêu đề câu chuyện trước.';
+    toast('Hãy nhập tiêu đề cho AI Script Wizard.', 'warn');
+    ui.wizardTitle.focus();
+    return;
+  }
+  const baseOpts = collectCreateOpts();
+  const wizardOpts = { ...baseOpts, mode: 'ai', topic: title, sceneCount };
+  ui.btnWizardGenerate.disabled = true;
+  ui.wizardStatus.className = 'wizard-status';
+  ui.wizardStatus.textContent = `⏳ Đang viết ${sceneCount} cảnh và tạo prompt tiếng Anh…`;
+  try {
+    let parts;
+    try {
+      parts = await generateWizardScriptViaAI(title, { sceneCount, style: baseOpts.style });
+      service.text = true;
+      updateServiceChip();
+    } catch (error) {
+      console.warn('AI Script Wizard failed:', error);
+      service.text = false;
+      updateServiceChip();
+      parts = heuristicWizardScript(title, { sceneCount, style: baseOpts.style });
+      ui.wizardStatus.textContent = '⚡ AI tạm thời offline — đã dùng Script Wizard local.';
+    }
+    wizardPlan = {
+      title,
+      parts: normalizePlan(parts, wizardOpts),
+      signature: planSignature(wizardOpts),
+      opts: wizardOpts,
+    };
+    renderWizardPreview(wizardPlan.parts, title);
+    ui.wizardStatus.className = 'wizard-status ok';
+    ui.wizardStatus.textContent = `✅ Đã tạo ${wizardPlan.parts.length} cảnh · Bước 2: bấm Nạp Prompt.`;
+    toast('✨ AI Script Wizard đã tạo kịch bản và prompt tiếng Anh cho từng cảnh.', 'ok', 5000);
+  } catch (error) {
+    console.error(error);
+    ui.wizardStatus.className = 'wizard-status error';
+    ui.wizardStatus.textContent = 'Không tạo được kịch bản. Hãy thử lại.';
+    toast('AI Script Wizard chưa tạo được kịch bản.', 'err');
+  } finally {
+    ui.btnWizardGenerate.disabled = false;
+  }
 });
 
 ui.btnGeneratePlan.addEventListener('click', async () => {

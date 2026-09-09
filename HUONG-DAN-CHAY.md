@@ -52,6 +52,8 @@ Nhấn `Ctrl + C` trong terminal đang chạy server.
 
 ### Bước 1️⃣ — Tạo video mới (màn hình đầu)
 
+**AI Script Wizard (tạo kịch bản từ tiêu đề):** nhập một tiêu đề ngắn như `Chuyện mẹ chồng nàng dâu`, chọn số cảnh (mặc định 8), rồi bấm **✨ Tạo kịch bản**. Wizard sẽ sinh lời bình tiếng Việt và prompt video tiếng Anh cho từng cảnh, kèm mã nhân vật `CHART 1`, `CHART 2` để dùng cùng ảnh tham chiếu. Kiểm tra danh sách cảnh rồi bấm **📥 Nạp Prompt vào hàng đợi sản xuất**, sau đó bấm **🚀 Tạo video**.
+
 1. **Nhập chủ đề** vào ô lớn, ví dụ: *"Lịch sử vé số Vietlott"*, *"5 mẹo học tiếng Nhật hiệu quả"*, hoặc bấm một chip gợi ý có sẵn.
 2. Chỉnh các thiết lập:
 
@@ -167,9 +169,10 @@ temem99/
 └── public/
     ├── index.html       Giao diện 2 màn: Tạo mới → Studio
     ├── css/style.css    Theme tối, font Be Vietnam Pro
+    ├── css/script-wizard.css Glow Pulse cho AI Script Wizard
     ├── js/
     │   ├── main.js      Bộ điều phối: state, luồng tạo video, UI
-    │   ├── ai.js        Gọi Pollinations.ai + fallback offline
+    │   ├── ai.js        Gọi Pollinations.ai + AI Script Wizard + fallback offline
     │   ├── art.js       Nhận diện chủ đề, ảnh thủ tục, thư viện ảnh
     │   ├── audio.js     AudioContext, Web Speech, nhạc nền Web Audio
     │   ├── renderer.js  Timeline + vẽ từng khung hình (Ken Burns, phụ đề…)

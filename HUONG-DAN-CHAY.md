@@ -160,7 +160,15 @@ export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
 npm start
 ```
 
-Trong app, bấm **🔐 Đăng nhập Gemini** và chấp thuận quyền Google Cloud. Sau đó chọn **✨ Gemini — ảnh qua Google OAuth** ở mục **Chế độ hình ảnh AI**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, VideoAI Studio gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, đọc `candidates[].content.parts[].inlineData` rồi dùng ảnh trả về làm asset scene.
+Hoặc dùng file mẫu trong repo:
+
+```bash
+cp .env.example .env
+# điền giá trị Agnes/Google vào .env, rồi:
+npm start
+```
+
+`.env` không được commit. Trong app, bấm **🔐 Đăng nhập Gemini** và chấp thuận quyền Google Cloud. Sau đó chọn **✨ Gemini — ảnh qua Google OAuth** ở mục **Chế độ hình ảnh AI**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, VideoAI Studio gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, đọc `candidates[].content.parts[].inlineData` rồi dùng ảnh trả về làm asset scene.
 
 Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa có credential, Pollinations/offline, Veo và Agnes không bị thay đổi. Token chỉ nằm trong `Map` server theo cookie HttpOnly và mất khi process restart; production nên thêm HTTPS, session store mã hoá/bền vững, CSRF và rate-limit.
 

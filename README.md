@@ -90,7 +90,15 @@ export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
 npm start
 ```
 
-Bấm **🔐 Đăng nhập Gemini**, chấp thuận quyền Google Cloud, rồi ở **Chế độ hình ảnh AI** chọn **✨ Gemini — ảnh qua Google OAuth**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, ảnh Gemini được dùng trực tiếp làm asset scene. Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa cấu hình OAuth, các chế độ Pollinations/offline và workflow Veo/Agnes hiện tại vẫn hoạt động bình thường.
+Hoặc dùng file cấu hình local đã có sẵn mẫu:
+
+```bash
+cp .env.example .env
+# sửa .env, sau đó:
+npm start
+```
+
+`.env` bị bỏ qua bởi Git; không commit client secret. Bấm **🔐 Đăng nhập Gemini**, chấp thuận quyền Google Cloud, rồi ở **Chế độ hình ảnh AI** chọn **✨ Gemini — ảnh qua Google OAuth**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, ảnh Gemini được dùng trực tiếp làm asset scene. Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa cấu hình OAuth, các chế độ Pollinations/offline và workflow Veo/Agnes hiện tại vẫn hoạt động bình thường.
 
 > Token nằm trong `Map` phía server theo cookie HttpOnly phiên và mất khi process restart. Production nên dùng HTTPS, session store bền vững/mã hoá, CSRF và rate-limit phù hợp với mô hình triển khai.
 

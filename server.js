@@ -17,6 +17,27 @@ const HOST = '0.0.0.0';
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
 
+// Load local configuration without adding a dependency. Existing process env wins.
+function loadDotEnv(filePath = path.join(ROOT, '.env')) {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (!match || process.env[match[1]] !== undefined) continue;
+      let value = match[2].trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[match[1]] = value;
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn(`Không đọc được .env: ${err.message}`);
+  }
+}
+loadDotEnv();
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',

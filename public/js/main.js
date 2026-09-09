@@ -14,7 +14,7 @@ import { isLocalVoice, synthesizeLocalVoice } from './local-tts.js';
 import { Renderer, buildTimeline } from './renderer.js';
 import { exportVideo, extForMime } from './exporter.js';
 import { generateVeoVideo, veoModelLabel } from './veo.js';
-import { generateAgnesVideo, agnesModelLabel } from './agnes.js';
+import { generateAgnesVideo, generateAgnesCreativeVideo, agnesModelLabel } from './agnes.js';
 
 /* ═══════════ Trạng thái ═══════════ */
 
@@ -68,6 +68,8 @@ let mode = 'ai';
 let sceneCounter = 0;
 let draftPlan = null;
 let wizardPlan = null;
+let agnesReturnScreen = 'create';
+let agnesObjectUrl = null;
 
 const CREATIVE_MODES = {
   storyboard: 'Tạo storyboard có hook, diễn biến và kết luận; mỗi cảnh có prompt ảnh và prompt camera.',
@@ -138,6 +140,10 @@ const ui = {
   serviceChip: $('#serviceChip'),
   screenCreate: $('#screen-create'),
   screenStudio: $('#screen-studio'),
+  screenAgnes: $('#screen-agnes'), btnAgnesTab: $('#btnAgnesTab'), btnAgnesBack: $('#btnAgnesBack'),
+  agnesModeTabs: $('#agnesModeTabs'), agnesCreativeFields: $('#agnesCreativeFields'), agnesSimpleFields: $('#agnesSimpleFields'),
+  agnesIdea: $('#agnesIdea'), agnesRequirements: $('#agnesRequirements'), agnesStyle: $('#agnesStyle'), agnesChaining: $('#agnesChaining'), agnesNarration: $('#agnesNarration'), agnesPrompt: $('#agnesPrompt'),
+  btnAgnesGenerate: $('#btnAgnesGenerate'), agnesConfigStatus: $('#agnesConfigStatus'), agnesProgressPanel: $('#agnesProgressPanel'), agnesStatus: $('#agnesStatus'), agnesBar: $('#agnesBar'), agnesTaskBadge: $('#agnesTaskBadge'), agnesEmpty: $('#agnesEmpty'), agnesVideo: $('#agnesVideo'), btnAgnesDownload: $('#btnAgnesDownload'),
   inputTopic: $('#inputTopic'),
   labelTopic: $('#labelTopic'),
   inputBrief: $('#inputBrief'),
@@ -1215,6 +1221,93 @@ ui.btnRecSave.addEventListener('click', async () => {
     toast('Không đọc được file âm thanh vừa thu.', 'err');
   }
 });
+
+/* ═══════════ Agnes Video Generator tab ═══════════ */
+
+function openAgnesTab() {
+  agnesReturnScreen = ui.screenStudio.classList.contains('hidden') ? 'create' : 'studio';
+  ui.screenCreate.classList.add('hidden');
+  ui.screenStudio.classList.add('hidden');
+  ui.screenAgnes.classList.remove('hidden');
+}
+
+function closeAgnesTab() {
+  ui.screenAgnes.classList.add('hidden');
+  if (agnesReturnScreen === 'studio' && state.scenes.length) ui.screenStudio.classList.remove('hidden');
+  else ui.screenCreate.classList.remove('hidden');
+}
+
+function syncAgnesModeUI() {
+  const creative = ui.agnesModeTabs.querySelector('.active')?.dataset.agnesMode !== 'simple';
+  ui.agnesCreativeFields.classList.toggle('hidden', !creative);
+  ui.agnesSimpleFields.classList.toggle('hidden', creative);
+  ui.btnAgnesGenerate.textContent = creative ? '🎬 Tạo video Agnes multi-scene' : '🎬 Tạo clip Agnes';
+}
+
+ui.btnAgnesTab.addEventListener('click', openAgnesTab);
+ui.btnAgnesBack.addEventListener('click', closeAgnesTab);
+ui.agnesModeTabs.querySelectorAll('button').forEach(button => {
+  button.addEventListener('click', () => {
+    ui.agnesModeTabs.querySelectorAll('button').forEach(item => item.classList.remove('active'));
+    button.classList.add('active');
+    syncAgnesModeUI();
+  });
+});
+
+ui.btnAgnesGenerate.addEventListener('click', async () => {
+  const creative = ui.agnesModeTabs.querySelector('.active')?.dataset.agnesMode !== 'simple';
+  const idea = creative ? ui.agnesIdea.value.trim() : ui.agnesPrompt.value.trim();
+  if (!idea) {
+    toast(`Hãy nhập ${creative ? 'ý tưởng' : 'prompt'} cho Agnes.`, 'warn');
+    (creative ? ui.agnesIdea : ui.agnesPrompt).focus();
+    return;
+  }
+  ui.btnAgnesGenerate.disabled = true;
+  ui.agnesProgressPanel.classList.remove('hidden');
+  ui.agnesEmpty.classList.add('hidden');
+  ui.agnesVideo.classList.add('hidden');
+  ui.btnAgnesDownload.classList.add('hidden');
+  ui.agnesTaskBadge.textContent = 'Đang chạy';
+  try {
+    const result = creative
+      ? await generateAgnesCreativeVideo({
+        idea,
+        requirements: ui.agnesRequirements.value.trim(),
+        visualStyle: ui.agnesStyle.value,
+        chainingMode: ui.agnesChaining.value,
+        narration: ui.agnesNarration.checked,
+        onProgress: (p, text) => { ui.agnesBar.style.width = `${Math.round(p * 100)}%`; ui.agnesStatus.textContent = text; },
+      })
+      : await generateAgnesVideo({
+        prompt: idea,
+        durationSeconds: '5',
+        resolution: state.aspect === '9:16' ? '768x1152' : state.aspect === '1:1' ? '1024x1024' : '1152x768',
+        onProgress: (p, text) => { ui.agnesBar.style.width = `${Math.round(p * 100)}%`; ui.agnesStatus.textContent = text; },
+      });
+    if (agnesObjectUrl) URL.revokeObjectURL(agnesObjectUrl);
+    agnesObjectUrl = URL.createObjectURL(result.blob);
+    ui.agnesVideo.src = agnesObjectUrl;
+    ui.agnesVideo.classList.remove('hidden');
+    ui.btnAgnesDownload.classList.remove('hidden');
+    ui.btnAgnesDownload.onclick = () => {
+      const link = document.createElement('a');
+      link.href = agnesObjectUrl;
+      link.download = `${slugify(idea.slice(0, 60) || 'agnes-video')}.mp4`;
+      link.click();
+    };
+    ui.agnesTaskBadge.textContent = `Hoàn tất · ${result.taskId}`;
+    ui.agnesStatus.textContent = 'Video Agnes đã sẵn sàng.';
+    toast('🎬 Agnes đã tạo xong video.', 'ok', 5000);
+  } catch (error) {
+    ui.agnesTaskBadge.textContent = 'Lỗi';
+    ui.agnesStatus.textContent = error.message || 'Agnes tạo video thất bại.';
+    toast(`Agnes lỗi: ${escapeHtml(error.message || 'kiểm tra AGNES_URL và service')}`, 'err', 8000);
+  } finally {
+    ui.btnAgnesGenerate.disabled = false;
+  }
+});
+
+syncAgnesModeUI();
 
 /* ═══════════ Google Veo ═══════════ */
 

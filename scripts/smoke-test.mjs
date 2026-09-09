@@ -245,6 +245,7 @@ async function scenarioOnline() {
   t('có nút tạo kịch bản + Veo Lite', !!doc.querySelector('#btnCreateVeoLite') && doc.querySelector('#veoModel option[value="veo-3.1-lite-generate-preview"]').textContent.includes('lower priority'));
   t('AI Script Wizard có tiêu đề và mặc định 8 cảnh', !!doc.querySelector('#scriptWizard') && doc.querySelector('#wizardTitle') && doc.querySelector('#wizardSceneCount').value === '8');
   t('modal Veo có source Agnes AI', !!doc.querySelector('#videoProvider option[value="agnes"]'));
+  t('có tab Agnes Video riêng', !!doc.querySelector('#btnAgnesTab') && !!doc.querySelector('#screen-agnes') && !!doc.querySelector('#agnesModeTabs'));
 
   await clickCreate(w, 'Trí tuệ nhân tạo và tương lai');
   const done = await waitFor(() => creationDone(doc));

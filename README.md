@@ -12,7 +12,7 @@
 | 🖼 **Hình ảnh AI từng cảnh** | Mỗi cảnh có Prompt Lab (image prompt + negative prompt), ảnh AI model Flux, thư viện 9 ảnh, ảnh procedural hoặc ảnh riêng. |
 | 🎥 **Prompt chuyển động** | AI tạo prompt camera cho từng cảnh; renderer có slow zoom, pan trái/phải, push-in, parallax và static. |
 | 🪄 **Ảnh tham chiếu** | Tạo keyframe/reference image riêng bằng prompt cho từng cảnh, dùng làm frame đầu khi gọi Veo. |
-| 🎬 **Google Veo + Agnes** | Nút tạo kịch bản + workflow **Veo 3.1 Lite · lower priority** hoặc chọn **Agnes AI self-hosted** làm nguồn tạo clip; poll task, xem/tải MP4 và gắn clip vào scene để preview/export. |
+| 🎬 **Google Veo + Agnes** | Nút tạo kịch bản + workflow **Veo 3.1 Lite · lower priority**, tab riêng **Agnes Video** cho creative multi-scene/simple clip, hoặc chọn Agnes làm nguồn clip trong Studio; poll task, xem/tải MP4 và gắn clip vào scene để preview/export. |
 | 🔊 **Giọng đọc AI chân thật** | 6 giọng AI online + tone tự nhiên/tài liệu/năng lượng/chuyên nghiệp/gần gũi và tốc độ đọc. Fallback: Web Speech API, VietTTS/Kokoro/Piper local hoặc **thu âm giọng của chính bạn**. |
 | 🎵 **Nhạc nền tự sinh** | Nhạc ambient (đệm hợp âm + reverb) sinh bằng Web Audio — không cần file nhạc, trộn thẳng vào video xuất ra. |
 | 🎥 **Hiệu ứng điện ảnh** | Ken Burns (zoom/pan chậm), 3 kiểu chuyển cảnh, phụ đề tự chia câu động, màn mở đầu/kết thúc, watermark. |
@@ -44,11 +44,12 @@ public/
   css/style.css      Theme tối, font Be Vietnam Pro
   css/ai-director.css Mode AI, Prompt Lab, storyboard preview, nguồn mở
   css/script-wizard.css Glow Pulse và preview cho AI Script Wizard
+  css/agnes-tab.css   Giao diện tab Agnes Video riêng
   js/
     main.js          Bộ điều phối: state, luồng tạo video, UI, phát/xem trước
     ai.js            Gọi Pollinations.ai (kịch bản / ảnh / giọng đọc) + fallback
     veo.js           Adapter Gemini REST API / Google Veo 3.1, poll operation + MP4
-    agnes.js         Adapter Agnes task API qua server proxy /api/agnes
+    agnes.js         Adapter Agnes creative/simple task API qua /api/agnes
     local-tts.js     Adapter VietTTS / Kokoro / Piper qua server proxy
     art.js           Nhận diện chủ đề, ảnh thủ tục (procedural art), thư viện ảnh
     audio.js         AudioContext, Web Speech API, nhạc nền Web Audio

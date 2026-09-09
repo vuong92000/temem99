@@ -144,7 +144,7 @@ export AGNES_URL="http://127.0.0.1:8765"
 npm start
 ```
 
-Trong Studio, mở nút **🎬 Veo**, chọn **Nguồn tạo video → Agnes AI · self-hosted**, rồi bấm tạo video. Ứng dụng gọi `POST /api/tasks/simple`, theo dõi `GET /api/tasks/{task_id}` và tải clip từ `GET /api/video/{task_id}` qua server proxy `/api/agnes`; trình duyệt không gọi service local trực tiếp. Kiểm tra adapter bằng `npm run test:agnes`.
+Trên thanh trên cùng, mở tab riêng **🧩 Agnes Video**. Chọn **Creative multi-scene** để gửi ý tưởng tới pipeline Agnes (story, script, narration, subtitles, keyframes), hoặc chọn **Simple clip** để tạo một clip từ prompt. Trong Studio, nút **🎬 Veo** cũng có lựa chọn **Nguồn tạo video → Agnes AI · self-hosted** cho từng cảnh. Ứng dụng gọi `POST /api/tasks/creative` hoặc `POST /api/tasks/simple`, theo dõi `GET /api/tasks/{task_id}` và tải clip từ `GET /api/video/{task_id}` qua server proxy `/api/agnes`; trình duyệt không gọi service local trực tiếp. Kiểm tra adapter bằng `npm run test:agnes`.
 
 > Agnes dùng API key/model do service Agnes quản lý. Không commit `AGNES_API_KEY` vào Git. License hiện được repository công bố là MIT, nhưng vẫn cần kiểm tra license của model/dịch vụ upstream trước khi phát hành thương mại.
 
@@ -189,6 +189,7 @@ temem99/
     ├── index.html       Giao diện 2 màn: Tạo mới → Studio
     ├── css/style.css    Theme tối, font Be Vietnam Pro
     ├── css/script-wizard.css Glow Pulse cho AI Script Wizard
+    ├── css/agnes-tab.css    Giao diện tab Agnes Video riêng
     ├── js/
     │   ├── main.js      Bộ điều phối: state, luồng tạo video, UI
     │   ├── ai.js        Gọi Pollinations.ai + AI Script Wizard + fallback offline
@@ -197,7 +198,7 @@ temem99/
     │   ├── renderer.js  Timeline + vẽ từng khung hình (Ken Burns, phụ đề…)
     │   ├── exporter.js  Trộn âm offline + MediaRecorder xuất video
     │   ├── veo.js       Adapter Gemini REST API / Google Veo
-    │   ├── agnes.js     Adapter Agnes qua /api/agnes
+    │   ├── agnes.js     Adapter Agnes creative/simple qua /api/agnes
     │   ├── local-tts.js Adapter VietTTS/Kokoro/Piper qua /api/tts
     │   └── util.js      Tiện ích (PRNG, toast, timeout…)
     └── library/         9 ảnh nền AI dự phòng (chạy offline vẫn có ảnh)

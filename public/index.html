@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/ai-director.css">
   <link rel="stylesheet" href="css/script-wizard.css">
+  <link rel="stylesheet" href="css/agnes-tab.css">
 </head>
 <body>
 
@@ -25,6 +26,7 @@
     </div>
     <div class="topbar-actions">
       <span id="serviceChip" class="chip" title="Trạng thái các dịch vụ AI online">⏳ Đang kiểm tra AI…</span>
+      <button id="btnAgnesTab" class="btn ghost">🧩 Agnes Video</button>
       <button id="btnSources" class="btn ghost">🧩 Nguồn mở</button>
       <button id="btnHelp" class="btn ghost">❓ Hướng dẫn</button>
     </div>
@@ -251,6 +253,61 @@
           <button id="btnCreateVeoLite" type="button" class="btn veo-launch xl">🎬 Tạo video từ mô tả · Veo 3.1 Lite <span>Low priority</span></button>
           <p class="hint">💡 Nút Veo sẽ viết kịch bản bằng AI Director rồi mở trình tạo clip Veo 3.1 Lite cho cảnh đầu tiên. Bạn cần Gemini API key và có thể tiếp tục tạo clip cho các cảnh khác trong Studio.
              Mất mạng vẫn tạo được video cơ bản với thư viện ảnh, giọng đọc trình duyệt và nhạc nền tự sinh.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ MÀN AGNES VIDEO ══════════ -->
+    <section id="screen-agnes" class="screen hidden">
+      <div class="agnes-wrap">
+        <div class="agnes-hero">
+          <button id="btnAgnesBack" type="button" class="btn ghost small">↩ Về VideoAI Studio</button>
+          <span class="agnes-kicker">OPEN-SOURCE VIDEO PIPELINE</span>
+          <h2>Agnes <span class="grad">Video Generator</span></h2>
+          <p>Tạo video một cảnh hoặc pipeline nhiều cảnh với narration, subtitles, keyframes và task resume qua service Agnes bạn tự host.</p>
+          <a href="https://github.com/lcy362/agnes-video-generator" target="_blank" rel="noopener noreferrer">Xem repository Agnes ↗</a>
+        </div>
+        <div class="agnes-grid">
+          <div class="card agnes-form-card">
+            <div class="agnes-mode-tabs" id="agnesModeTabs">
+              <button type="button" class="active" data-agnes-mode="creative">🎞 Creative multi-scene</button>
+              <button type="button" data-agnes-mode="simple">⚡ Simple clip</button>
+            </div>
+            <div id="agnesCreativeFields">
+              <label class="field"><span>Ý tưởng video</span>
+                <textarea id="agnesIdea" rows="5" placeholder="VD: Hành trình khởi nghiệp của một cô gái Việt, từ căn phòng nhỏ đến sản phẩm đầu tiên…"></textarea>
+              </label>
+              <label class="field"><span>Yêu cầu đạo diễn <em>(không bắt buộc)</em></span>
+                <input id="agnesRequirements" type="text" placeholder="8 cảnh, nhịp điện ảnh, nhân vật nhất quán, kết thúc truyền cảm hứng…">
+              </label>
+              <div class="agnes-options">
+                <label class="field"><span>Phong cách</span>
+                  <select id="agnesStyle"><option value="cinematic realism">Cinematic realism</option><option value="anime">Anime</option><option value="watercolor">Watercolor</option><option value="cyberpunk">Cyberpunk</option></select>
+                </label>
+                <label class="field"><span>Nối cảnh</span>
+                  <select id="agnesChaining"><option value="keyframes">Keyframes · nhất quán</option><option value="ti2vid">TI2VID · chuyển tiếp</option><option value="none">None · nhanh</option></select>
+                </label>
+              </div>
+              <label class="switch agnes-check"><input id="agnesNarration" type="checkbox" checked><i></i> Tạo narration TTS và subtitles</label>
+            </div>
+            <div id="agnesSimpleFields" class="hidden">
+              <label class="field"><span>Prompt clip</span>
+                <textarea id="agnesPrompt" rows="7" placeholder="Describe one video shot, subject, action, camera and lighting…"></textarea>
+              </label>
+            </div>
+            <button id="btnAgnesGenerate" type="button" class="btn primary xl">🎬 Bắt đầu tạo video Agnes</button>
+            <p id="agnesConfigStatus" class="hint">Cần chạy Agnes service và đặt <code>AGNES_URL</code> trên server VideoAI Studio.</p>
+          </div>
+          <div class="card agnes-result-card">
+            <div class="agnes-result-head"><b>Task &amp; preview</b><span id="agnesTaskBadge" class="chip">Chưa có task</span></div>
+            <div id="agnesProgressPanel" class="hidden">
+              <p id="agnesStatus">Đang gửi tác vụ Agnes…</p>
+              <div class="progress"><div id="agnesBar"></div></div>
+            </div>
+            <div id="agnesEmpty" class="agnes-empty">🎬<br><span>Video Agnes hoàn tất sẽ xuất hiện ở đây.</span></div>
+            <video id="agnesVideo" class="hidden" controls playsinline></video>
+            <button id="btnAgnesDownload" type="button" class="btn primary xl hidden">⬇ Tải video Agnes</button>
+          </div>
         </div>
       </div>
     </section>

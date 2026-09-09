@@ -79,17 +79,26 @@ async function proxyAgnes(req, res, urlPath) {
     });
   }
   try {
-    if (req.method === 'POST' && urlPath === '/api/agnes/video') {
+    if (req.method === 'POST' && (urlPath === '/api/agnes/video' || urlPath === '/api/agnes/creative')) {
       const body = await readJson(req);
-      const prompt = String(body.prompt || '').trim();
-      if (!prompt) return send(res, 400, JSON.stringify({ error: 'Prompt Agnes đang trống.' }), { 'Content-Type': 'application/json; charset=utf-8' });
-      const form = new URLSearchParams({
-        prompt,
-        mode: String(body.mode || 't2v'),
-        duration: String(body.duration || 5),
-        resolution: String(body.resolution || '768x1152'),
-      });
-      const upstream = await fetch(`${base}/api/tasks/simple`, {
+      const isCreative = urlPath === '/api/agnes/creative';
+      const idea = String(body.idea || body.prompt || '').trim();
+      if (!idea) return send(res, 400, JSON.stringify({ error: 'Ý tưởng/prompt Agnes đang trống.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      const form = isCreative
+        ? new URLSearchParams({
+          idea,
+          user_requirements: String(body.user_requirements || body.requirements || ''),
+          visual_style: String(body.visual_style || body.style || 'cinematic realism'),
+          chaining_mode: String(body.chaining_mode || 'keyframes'),
+          narration: body.narration === false ? 'false' : 'true',
+        })
+        : new URLSearchParams({
+          prompt: idea,
+          mode: String(body.mode || 't2v'),
+          duration: String(body.duration || 5),
+          resolution: String(body.resolution || '768x1152'),
+        });
+      const upstream = await fetch(`${base}/api/tasks/${isCreative ? 'creative' : 'simple'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...agnesHeaders() },
         body: form,

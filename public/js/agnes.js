@@ -17,24 +17,11 @@ function taskProgress(body) {
   return Number.isFinite(number) ? (number > 1 ? number / 100 : number) : null;
 }
 
-export async function generateAgnesVideo({
-  prompt,
-  durationSeconds = '5',
-  resolution = '768x1152',
-  onProgress,
-  pollMs = 3000,
-  timeoutMs = 15 * 60 * 1000,
-} = {}) {
-  if (!prompt?.trim()) throw new Error('Prompt Agnes đang trống.');
-  const create = await withTimeout(fetch('/api/agnes/video', {
+async function runAgnesTask(endpoint, payload, { onProgress, pollMs = 3000, timeoutMs = 15 * 60 * 1000 } = {}) {
+  const create = await withTimeout(fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: prompt.trim(),
-      mode: 't2v',
-      duration: String(durationSeconds),
-      resolution,
-    }),
+    body: JSON.stringify(payload),
   }), 60000, 'Agnes không phản hồi khi tạo tác vụ');
   const createBody = await create.json().catch(() => ({}));
   if (!create.ok) throw new Error(createBody?.error || `Agnes trả về ${create.status}`);
@@ -72,6 +59,20 @@ export async function generateAgnesVideo({
   return { blob, taskId, model: 'agnes-ai' };
 }
 
+export function generateAgnesVideo({ prompt, durationSeconds = '5', resolution = '768x1152', onProgress, pollMs, timeoutMs } = {}) {
+  if (!prompt?.trim()) return Promise.reject(new Error('Prompt Agnes đang trống.'));
+  return runAgnesTask('/api/agnes/video', {
+    prompt: prompt.trim(), mode: 't2v', duration: String(durationSeconds), resolution,
+  }, { onProgress, pollMs, timeoutMs });
+}
+
+export function generateAgnesCreativeVideo({ idea, requirements = '', visualStyle = 'cinematic realism', chainingMode = 'keyframes', narration = true, onProgress, pollMs, timeoutMs } = {}) {
+  if (!idea?.trim()) return Promise.reject(new Error('Ý tưởng Agnes đang trống.'));
+  return runAgnesTask('/api/agnes/creative', {
+    idea: idea.trim(), requirements, visual_style: visualStyle, chaining_mode: chainingMode, narration,
+  }, { onProgress, pollMs, timeoutMs });
+}
+
 export function agnesModelLabel() {
-  return 'Agnes AI · self-hosted / cloud-free pipeline';
+  return 'Agnes AI · self-hosted / multi-scene pipeline';
 }

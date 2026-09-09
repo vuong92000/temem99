@@ -19,7 +19,7 @@ function listen(server) {
 async function startApp(env = {}) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...process.env, PORT: '0', ...env },
+    env: { ...process.env, PORT: '0', VIDEOAI_DISABLE_DOTENV: '1', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';

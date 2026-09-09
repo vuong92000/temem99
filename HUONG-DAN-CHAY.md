@@ -131,48 +131,68 @@ python scripts/veo3_lite_generate.py \
 
 Veo là dịch vụ có quota/chi phí riêng. Không đưa API key vào Git, HTML hoặc tin nhắn công khai.
 
-## 6. Đăng nhập Google và tạo ảnh bằng Gemini (tuỳ chọn)
+## 6. Tạo ảnh Gemini — API key hoặc Google OAuth (tuỳ chọn)
 
-VideoAI Studio dùng OAuth 2.0 chính thức để gọi Gemini bằng quyền Google Cloud của người dùng. Không nhập Google username/password vào app. Google Sign-In ID token cũng không được dùng thay cho OAuth access token: token truy cập được giữ trong session phía server và không expose cho frontend.
+VideoAI Studio dùng server proxy `/api/gemini/image` để gọi Gemini `generateContent`. Ảnh trả về nằm trong `candidates[].content.parts[].inlineData`. Browser không gọi Gemini trực tiếp và không nhận credential.
 
-### Cấu hình Google Cloud
+### Cách nhanh nhất: chỉ cần Gemini API key
 
-1. Tạo/chọn Google Cloud project và bật Gemini/Generative Language API.
-2. Tạo OAuth consent screen và OAuth client ID loại **Web application**.
-3. Thêm redirect URI đúng host chạy app, ví dụ:
+1. Vào [Google AI Studio](https://aistudio.google.com/apikey).
+2. Tạo/copy Gemini API key.
+3. Tự điền key vào `.env`, không gửi key vào chat:
+
+```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image-preview
+```
+
+Trong chế độ này không cần `GOOGLE_OAUTH_CLIENT_SECRET` hoặc `GOOGLE_CLOUD_PROJECT_ID`. Server gửi API key bằng header `x-goog-api-key` và giữ key phía server. Khi restart, topbar sẽ hiển thị **✅ Gemini API key sẵn sàng**.
+
+### Cách OAuth theo tài khoản Google
+
+Dùng cách này nếu mỗi người dùng phải đăng nhập Google và sử dụng quyền Google Cloud riêng:
+
+1. Tạo/chọn Google Cloud project.
+2. Bật Gemini/Generative Language API.
+3. Tạo OAuth consent screen.
+4. Tạo OAuth client ID loại **Web application**.
+5. Thêm redirect URI:
 
 ```text
 http://localhost:3000/api/google/oauth/callback
 ```
 
-Khi chạy qua preview/tunnel/domain, redirect URI phải là URL public chính xác, ví dụ `https://your-host.example/api/google/oauth/callback`.
+Khi chạy qua preview/tunnel/domain, dùng URL public chính xác, ví dụ:
 
-### Cấu hình server
-
-```bash
-export GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com"
-export GOOGLE_OAUTH_CLIENT_SECRET="..."
-export GOOGLE_CLOUD_PROJECT_ID="my-gemini-project"
-# Bắt buộc nếu host không phải localhost:
-export GOOGLE_OAUTH_REDIRECT_URI="https://your-host.example/api/google/oauth/callback"
-# Có thể override model theo danh sách model hiện hành của Google:
-export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
-npm start
+```text
+https://your-host.example/api/google/oauth/callback
 ```
 
-Hoặc dùng file mẫu trong repo:
+Cấu hình OAuth:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=...
+GOOGLE_CLOUD_PROJECT_ID=my-gemini-project
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google/oauth/callback
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image-preview
+```
+
+OAuth access token và refresh token chỉ nằm trong session server. Không dùng Google username/password và không dùng ID token thay cho access token.
+
+### Khởi động
 
 ```bash
 cp .env.example .env
-# điền giá trị Agnes/Google vào .env, rồi:
+# điền GEMINI_API_KEY hoặc bộ OAuth vào .env
 npm start
 ```
 
-`.env` không được commit. Trong app, bấm **🔐 Đăng nhập Gemini** và chấp thuận quyền Google Cloud. Sau đó chọn **✨ Gemini — ảnh qua Google OAuth** ở mục **Chế độ hình ảnh AI**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, VideoAI Studio gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, đọc `candidates[].content.parts[].inlineData` rồi dùng ảnh trả về làm asset scene.
+Trong app, chọn **✨ Gemini — ảnh qua Google OAuth** ở mục **Chế độ hình ảnh AI**. Nếu có `GEMINI_API_KEY`, backend dùng API key tự động. Nếu không có API key nhưng OAuth đã đăng nhập, backend dùng OAuth Bearer token.
 
-Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa có credential, Pollinations/offline, Veo và Agnes không bị thay đổi. Token chỉ nằm trong `Map` server theo cookie HttpOnly và mất khi process restart; production nên thêm HTTPS, session store mã hoá/bền vững, CSRF và rate-limit.
+Sau đó tạo storyboard hoặc vào Studio bấm 🖼 AI trên từng scene. Ảnh Gemini được dùng làm asset scene.
 
-Kiểm thử tích hợp mock không cần credential thật:
+Kiểm thử mock không cần credential thật:
 
 ```bash
 npm run test:google

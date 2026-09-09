@@ -2015,11 +2015,15 @@ async function syncGeminiAuthUI() {
       ui.btnGeminiAuth.textContent = '✅ Gemini đã đăng nhập';
       ui.btnGeminiAuth.title = 'Bấm để đăng xuất Google Gemini';
       ui.btnGeminiAuth.classList.add('ok');
+    } else if (geminiAuthStatus.apiKeyConfigured && !geminiAuthStatus.oauthConfigured) {
+      ui.btnGeminiAuth.textContent = '✅ Gemini API key sẵn sàng';
+      ui.btnGeminiAuth.title = 'Gemini đang dùng API key server-side';
+      ui.btnGeminiAuth.classList.add('ok');
     } else {
       ui.btnGeminiAuth.textContent = geminiAuthStatus.configured ? '🔐 Đăng nhập Gemini' : '🔐 Gemini chưa cấu hình';
       ui.btnGeminiAuth.title = geminiAuthStatus.configured
-        ? 'Đăng nhập Google để dùng Gemini image generation'
-        : 'Quản trị viên cần cấu hình Google OAuth và Google Cloud project';
+        ? 'Đăng nhập Google hoặc dùng Gemini API key server-side'
+        : 'Quản trị viên cần cấu hình Gemini API key hoặc Google OAuth';
       ui.btnGeminiAuth.classList.remove('ok');
     }
   } catch (error) {
@@ -2038,7 +2042,11 @@ ui.btnGeminiAuth.addEventListener('click', async () => {
       return;
     }
     if (!geminiAuthStatus.configured) {
-      toast('Quản trị viên cần đặt GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET và GOOGLE_CLOUD_PROJECT_ID trước.', 'warn', 7000);
+      toast('Quản trị viên cần đặt GEMINI_API_KEY hoặc đủ bộ Google OAuth trước.', 'warn', 7000);
+      return;
+    }
+    if (geminiAuthStatus.apiKeyConfigured && !geminiAuthStatus.oauthConfigured) {
+      toast('Gemini API key server-side đã sẵn sàng; không cần đăng nhập Google.', 'ok', 4000);
       return;
     }
     startGoogleGeminiLogin();

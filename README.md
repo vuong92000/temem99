@@ -66,31 +66,45 @@ public/
 
 - Dịch vụ AI online dùng **Pollinations.ai** (miễn phí, không cần key) — có giới hạn tốc độ; khi vượt giới hạn app tự chuyển sang fallback.
 - Google Veo hiện vẫn dùng **Gemini API key** riêng trong modal Veo. Trong Studio bấm **🎬 Veo**, nhập key lấy từ [Google AI Studio](https://aistudio.google.com/apikey), chọn model/tỉ lệ/thời lượng/độ phân giải. Key chỉ nằm trong sessionStorage của trình duyệt; production nên dùng server proxy, không commit key.
-- Gemini image generation dùng **Google OAuth server-side**, không dùng Google username/password và không nhầm ID token với access token. Người vận hành cần tạo OAuth client dạng Web application, bật Gemini/Generative Language API, cấp quyền project và đặt `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_CLOUD_PROJECT_ID`, cùng `GOOGLE_OAUTH_REDIRECT_URI` nếu host không phải localhost. Người dùng bấm **🔐 Đăng nhập Gemini**, sau đó chọn `✨ Gemini — ảnh qua Google OAuth` ở màn tạo mới; access token/refresh token chỉ nằm trong bộ nhớ server.
+- Gemini image hỗ trợ **hai cách**: API key server-side (chỉ cần `GEMINI_API_KEY`, không cần đăng nhập) hoặc Google OAuth server-side (dùng quyền Cloud của từng tài khoản). Cả API key và OAuth token đều không được đưa vào frontend.
 - Có thêm helper server-side theo SDK Python tại `scripts/veo3_lite_generate.py`: cài `python -m pip install -r requirements-veo.txt`, đặt `GEMINI_API_KEY`, rồi chạy `python scripts/veo3_lite_generate.py --prompt "..." --output output.mp4`.
 - Veo tạo clip bất đồng bộ 4–8 giây và có thể nhận ảnh đầu vào; clip MP4 được gắn vào scene hiện tại. Video tổng hợp vẫn có thể xuất bằng MediaRecorder/WebM.
 - Video xuất ra là **WebM** (mở bằng Chrome/Edge, đăng thẳng lên YouTube/TikTok được). Cần MP4 thì dùng công cụ chuyển đổi (vd. CloudConvert, ffmpeg).
 - Quá trình xuất chạy **theo thời gian thực** — giữ tab mở và hiển thị cho đến khi xong.
 - Giọng đọc trình duyệt chỉ phát khi xem trước, **không ghi được** vào file xuất ra — muốn có giọng trong video hãy dùng giọng AI online hoặc nút 🎫 thu âm.
 
-## 🔐 Google OAuth + Gemini image generation (tuỳ chọn)
+## 🔐 Gemini image: API key hoặc Google OAuth (tuỳ chọn)
 
-VideoAI Studio dùng OAuth 2.0 chính thức để lấy quyền gọi Gemini/Google Cloud. Đây **không phải** Google Sign-In ID token: access token được giữ trong session server và không được gửi vào JavaScript/browser. Server gọi `generateContent` qua `/api/gemini/image`, gửi `Authorization: Bearer` và `x-goog-user-project`, rồi chuyển `inlineData` thành ảnh cho scene.
+VideoAI Studio gọi `generateContent` qua server proxy `/api/gemini/image` và đọc ảnh từ `inlineData`. Có hai cách cấu hình:
 
-Tạo Google Cloud project, bật Gemini/Generative Language API, tạo OAuth consent screen và OAuth client loại **Web application**. Thêm redirect URI đúng host chạy app, ví dụ `http://localhost:3000/api/google/oauth/callback`, rồi cấu hình trước khi chạy:
+### Cách A — chỉ dùng một Gemini API key
 
-```bash
-export GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com"
-export GOOGLE_OAUTH_CLIENT_SECRET="..."
-export GOOGLE_CLOUD_PROJECT_ID="my-gemini-project"
-# Bắt buộc khi chạy qua tunnel/preview hoặc domain khác localhost:
-export GOOGLE_OAUTH_REDIRECT_URI="https://your-host.example/api/google/oauth/callback"
-# Có thể override khi Google đổi model; mặc định hiện tại:
-export GEMINI_IMAGE_MODEL="gemini-3.1-flash-image-preview"
-npm start
+Đây là cách đơn giản nhất nếu bạn chỉ muốn cung cấp API key để test. Lấy key tại [Google AI Studio](https://aistudio.google.com/apikey), sau đó đặt trong `.env`:
+
+```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image-preview
 ```
 
-Hoặc dùng file cấu hình local đã có sẵn mẫu:
+Server gửi key bằng header `x-goog-api-key`; key không xuất hiện trong browser. Khi API key đã sẵn sàng, topbar sẽ hiển thị **✅ Gemini API key sẵn sàng** và không cần bấm đăng nhập Google. Chọn `✨ Gemini — ảnh qua Google OAuth` ở mục hình ảnh AI; tên lựa chọn này được giữ để tương thích workflow nhưng backend sẽ tự dùng API key.
+
+### Cách B — Google OAuth theo tài khoản
+
+OAuth phù hợp khi muốn người dùng đăng nhập Google và gọi Gemini bằng quyền Google Cloud của tài khoản. Đây không phải Google Sign-In ID token: access token/refresh token nằm trong session server.
+
+Tạo Google Cloud project, bật Gemini/Generative Language API, tạo OAuth consent screen và OAuth client loại **Web application**, rồi cấu hình:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=...
+GOOGLE_CLOUD_PROJECT_ID=my-gemini-project
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google/oauth/callback
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image-preview
+```
+
+Khi chạy qua tunnel/preview/domain, `GOOGLE_OAUTH_REDIRECT_URI` phải dùng URL public chính xác và được đăng ký trong Google Cloud Console.
+
+Có thể tạo file cấu hình từ mẫu:
 
 ```bash
 cp .env.example .env
@@ -98,11 +112,11 @@ cp .env.example .env
 npm start
 ```
 
-`.env` bị bỏ qua bởi Git; không commit client secret. Bấm **🔐 Đăng nhập Gemini**, chấp thuận quyền Google Cloud, rồi ở **Chế độ hình ảnh AI** chọn **✨ Gemini — ảnh qua Google OAuth**. Khi tạo storyboard hoặc bấm nút 🖼 AI ở một scene, ảnh Gemini được dùng trực tiếp làm asset scene. Nút **✅ Gemini đã đăng nhập** cho phép đăng xuất phiên hiện tại. Nếu chưa cấu hình OAuth, các chế độ Pollinations/offline và workflow Veo/Agnes hiện tại vẫn hoạt động bình thường.
+`.env` bị bỏ qua bởi Git; không commit API key hoặc client secret. Kiểm thử API key mode và OAuth mock bằng:
 
-> Token nằm trong `Map` phía server theo cookie HttpOnly phiên và mất khi process restart. Production nên dùng HTTPS, session store bền vững/mã hoá, CSRF và rate-limit phù hợp với mô hình triển khai.
-
-Kiểm thử OAuth status, token exchange mock và Gemini image proxy không cần credential thật bằng `npm run test:google`.
+```bash
+npm run test:google
+```
 
 ## 🗺 Ý tưởng phát triển tiếp
 

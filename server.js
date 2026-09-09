@@ -19,6 +19,7 @@ const PUBLIC = path.join(ROOT, 'public');
 
 // Load local configuration without adding a dependency. Existing process env wins.
 function loadDotEnv(filePath = path.join(ROOT, '.env')) {
+  if (process.env.VIDEOAI_DISABLE_DOTENV === '1') return;
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     for (const line of raw.split(/\r?\n/)) {
@@ -104,6 +105,7 @@ function googleConfig() {
     clientId: String(process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
     clientSecret: String(process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
     projectId: String(process.env.GOOGLE_CLOUD_PROJECT_ID || '').trim(),
+    apiKey: String(process.env.GEMINI_API_KEY || '').trim(),
   };
 }
 
@@ -152,8 +154,8 @@ async function proxyGeminiImage(req, res) {
   try {
     const cfg = googleConfig();
     const token = await googleAccessToken(req);
-    if (!cfg.projectId) return send(res, 503, JSON.stringify({ error: 'Thiếu GOOGLE_CLOUD_PROJECT_ID.' }), { 'Content-Type': 'application/json; charset=utf-8' });
-    if (!token) return send(res, 401, JSON.stringify({ error: 'Chưa đăng nhập Google Gemini. Bấm Đăng nhập Gemini trước.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    if (!token && !cfg.apiKey) return send(res, 401, JSON.stringify({ error: 'Chưa có Gemini API key hoặc phiên OAuth. Đặt GEMINI_API_KEY hoặc bấm Đăng nhập Gemini.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    if (token && !cfg.projectId) return send(res, 503, JSON.stringify({ error: 'OAuth Gemini cần GOOGLE_CLOUD_PROJECT_ID.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     const body = await readJson(req);
     const prompt = String(body.prompt || '').trim();
     if (!prompt) return send(res, 400, JSON.stringify({ error: 'Prompt ảnh Gemini đang trống.' }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -166,9 +168,16 @@ async function proxyGeminiImage(req, res) {
       },
     };
     const geminiBase = String(process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com').replace(/\/$/, '');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+      headers['x-goog-user-project'] = cfg.projectId;
+    } else {
+      headers['x-goog-api-key'] = cfg.apiKey;
+    }
     const upstream = await fetch(`${geminiBase}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-goog-user-project': cfg.projectId },
+      headers,
       body: JSON.stringify(payload),
     });
     const result = await upstream.json().catch(() => ({}));
@@ -187,7 +196,16 @@ function googleAuthRoutes(req, res, urlPath) {
   if (req.method === 'GET' && urlPath === '/api/google/status') {
     const sid = cookieValue(req, 'videoai_sid');
     const session = googleSessions.get(sid);
-    return send(res, 200, JSON.stringify({ configured: !!(cfg.clientId && cfg.clientSecret && cfg.projectId), authenticated: !!session, projectId: cfg.projectId || null }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const oauthConfigured = !!(cfg.clientId && cfg.clientSecret && cfg.projectId);
+    const apiKeyConfigured = !!cfg.apiKey;
+    return send(res, 200, JSON.stringify({
+      configured: oauthConfigured || apiKeyConfigured,
+      oauthConfigured,
+      apiKeyConfigured,
+      authenticated: !!session,
+      authMethod: session ? 'oauth' : apiKeyConfigured ? 'api-key' : null,
+      projectId: cfg.projectId || null,
+    }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
   if (req.method === 'POST' && urlPath === '/api/google/logout') {
     googleSessions.delete(cookieValue(req, 'videoai_sid'));

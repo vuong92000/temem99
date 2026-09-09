@@ -19,7 +19,7 @@ function listen(server) {
 async function startApp(env = {}) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...process.env, PORT: '0', ...env },
+    env: { ...process.env, PORT: '0', VIDEOAI_DISABLE_DOTENV: '1', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -83,7 +83,7 @@ try {
   const noAuthImage = await fetch(`${base}/api/gemini/image`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: 'test image' }),
   });
-  check('Gemini image từ chối phiên chưa OAuth', noAuthImage.status === 401 && (await noAuthImage.text()).includes('Chưa đăng nhập'));
+  check('Gemini image từ chối phiên chưa OAuth', noAuthImage.status === 401 && (await noAuthImage.text()).includes('GEMINI_API_KEY'));
 
   const start = await fetch(`${base}/api/google/oauth/start`, { redirect: 'manual' });
   const location = start.headers.get('location') || '';
@@ -111,6 +111,25 @@ try {
   const logout = await fetch(`${base}/api/google/logout`, { method: 'POST', headers: { Cookie: sessionCookie } });
   const statusLogout = await fetch(`${base}/api/google/status`, { headers: { Cookie: sessionCookie } });
   check('Google logout xoá phiên server', logout.status === 200 && (await statusLogout.json()).authenticated === false);
+
+  await stopApp(app.child);
+  app = null;
+  const keyApp = await startApp({
+    GEMINI_API_KEY: 'mock-gemini-api-key',
+    GEMINI_API_BASE_URL: `http://127.0.0.1:${upstreamPort}`,
+  });
+  const keyBase = `http://127.0.0.1:${keyApp.port}`;
+  const keyStatus = await fetch(`${keyBase}/api/google/status`);
+  const keyStatusBody = await keyStatus.json();
+  check('API key mode chỉ cần GEMINI_API_KEY', keyStatus.status === 200 && keyStatusBody.configured === true && keyStatusBody.apiKeyConfigured === true && keyStatusBody.authenticated === false);
+
+  const keyImage = await fetch(`${keyBase}/api/gemini/image`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: 'A clean product photo of a Vietnamese coffee cup' }),
+  });
+  const keyImageData = Buffer.from(await keyImage.arrayBuffer());
+  check('Gemini API key proxy dùng x-goog-api-key server-side', keyImage.status === 200 && keyImageData.length > 20 && receivedGemini?.headers['x-goog-api-key'] === 'mock-gemini-api-key' && !receivedGemini?.headers.authorization && !receivedGemini?.headers['x-goog-user-project']);
+  await stopApp(keyApp.child);
 } finally {
   if (app?.child) await stopApp(app.child);
   upstream?.close();
